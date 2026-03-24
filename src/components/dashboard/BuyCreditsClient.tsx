@@ -213,10 +213,10 @@ export default function BuyCreditsClient({ businessId, businessName }: Props) {
               {pack.amount.toLocaleString()}₮
             </div>
             <div className="text-text-primary font-semibold mb-1">
-              {pack.credits.toLocaleString()} кредит
+              {pack.credits.toLocaleString()} мессеж
             </div>
             <div className="text-text-secondary text-sm">
-              ≈ {Math.round(pack.amount / pack.credits)}₮ / кредит
+              ≈ {Math.round(pack.amount / pack.credits)}₮ / мессеж
             </div>
             <div className="mt-4 text-xs text-success flex items-center gap-1">
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

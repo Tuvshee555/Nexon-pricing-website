@@ -99,13 +99,20 @@ export default function PricingSection() {
                     "Instagram + Messenger",
                     "Хяналтын самбар",
                     plan.tier !== "basic" ? "Тэргүүлэх дэмжлэг" : null,
+                    (plan.tier === "standard" || plan.tier === "premium") ? "Telegram мэдэгдэл" : null,
                   ]
                     .filter(Boolean)
                     .map((f) => (
                       <li key={f} className="flex items-center gap-2 text-sm text-text-secondary">
-                        <svg className="w-4 h-4 text-success flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
+                        {f === "Telegram мэдэгдэл" ? (
+                          <svg className="w-4 h-4 text-accent flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.08 13.99l-2.948-.924c-.64-.203-.658-.64.135-.954l11.566-4.458c.537-.194 1.006.131.861.567z"/>
+                          </svg>
+                        ) : (
+                          <svg className="w-4 h-4 text-success flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
                         {f}
                       </li>
                     ))}
@@ -155,7 +162,7 @@ export default function PricingSection() {
                     {pack.amount.toLocaleString()}₮
                   </div>
                   <div className="text-text-secondary text-sm mb-4">
-                    {pack.credits.toLocaleString()} {t("pricing_credits_label")}
+                    {pack.credits.toLocaleString()} мессеж
                   </div>
                   <div className="text-xs text-success mb-4 flex items-center gap-1">
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -164,7 +171,7 @@ export default function PricingSection() {
                     {t("pricing_never_expire")}
                   </div>
                   <div className="text-xs text-text-secondary">
-                    ≈ {Math.round(pack.amount / pack.credits)}₮ / кредит
+                    ≈ {Math.round(pack.amount / pack.credits)}₮ / мессеж
                   </div>
                   <Link
                     href="/register"
