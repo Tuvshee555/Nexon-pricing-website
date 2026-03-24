@@ -82,9 +82,9 @@ export interface CreditPack {
 }
 
 export const CREDIT_PACKS: CreditPack[] = [
-  { amount: 10000, credits: 300 },
-  { amount: 25000, credits: 700 },
-  { amount: 50000, credits: 1400, popular: true },
+  { amount: 10000, credits: 80 },
+  { amount: 25000, credits: 200 },
+  { amount: 50000, credits: 450, popular: true },
 ];
 
 export const MONTHLY_PLANS = [
@@ -93,7 +93,7 @@ export const MONTHLY_PLANS = [
     nameMn: "Үндсэн",
     nameEn: "Basic",
     price: 49000,
-    messageLimit: 1500,
+    messageLimit: 500,
     popular: false,
   },
   {
@@ -101,7 +101,7 @@ export const MONTHLY_PLANS = [
     nameMn: "Стандарт",
     nameEn: "Standard",
     price: 89000,
-    messageLimit: 4000,
+    messageLimit: 1200,
     popular: true,
   },
   {
@@ -109,7 +109,7 @@ export const MONTHLY_PLANS = [
     nameMn: "Премиум",
     nameEn: "Premium",
     price: 149000,
-    messageLimit: Infinity,
+    messageLimit: 2500,
     popular: false,
   },
   {
