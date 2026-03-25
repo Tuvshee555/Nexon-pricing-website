@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
+
+export const dynamic = "force-dynamic";
 
 export default async function AdminLayout({
   children,
@@ -15,7 +17,9 @@ export default async function AdminLayout({
 
   if (!user) redirect("/login");
 
-  const { data: userData } = await supabase
+  // Use admin client for role check to bypass RLS
+  const adminClient = await createAdminClient();
+  const { data: userData } = await adminClient
     .from("users")
     .select("role")
     .eq("id", user.id)

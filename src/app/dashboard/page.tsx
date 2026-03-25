@@ -8,12 +8,12 @@ export default async function DashboardPage({
   searchParams: Promise<{ welcome?: string }>;
 }) {
   const params = await searchParams;
-  const supabase = await createClient();
 
+  // Auth is already checked by the layout — just get the user id
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
   if (!user) redirect("/login");
 
   // Use admin client for all data fetching to bypass RLS

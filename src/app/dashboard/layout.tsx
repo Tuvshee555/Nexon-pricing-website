@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
+
+export const dynamic = "force-dynamic";
 
 export default async function DashboardLayout({
   children,
@@ -14,7 +16,9 @@ export default async function DashboardLayout({
 
   if (!user) redirect("/login");
 
-  const { data: userData } = await supabase
+  // Use admin client for DB queries to bypass RLS issues
+  const adminClient = await createAdminClient();
+  const { data: userData } = await adminClient
     .from("users")
     .select("role")
     .eq("id", user.id)

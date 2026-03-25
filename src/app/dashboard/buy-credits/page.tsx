@@ -3,12 +3,11 @@ import { redirect } from "next/navigation";
 import BuyCreditsClient from "@/components/dashboard/BuyCreditsClient";
 
 export default async function BuyCreditsPage() {
+  // Auth is already checked by the dashboard layout — just get user id
   const supabase = await createClient();
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
   if (!user) redirect("/login");
 
   // Use admin client for data fetch to bypass RLS
