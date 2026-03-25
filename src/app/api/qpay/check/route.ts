@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { checkPayment } from "@/lib/qpay";
 import { notifyPaymentReceived } from "@/lib/telegram";
+import { addCredits, addVirtualBalance } from "@/lib/credits";
 
 export async function GET(request: Request) {
   try {
@@ -17,7 +18,6 @@ export async function GET(request: Request) {
     if (result.count > 0 && result.rows[0]?.payment_status === "PAID") {
       const supabase = await createAdminClient();
 
-      // Load transaction
       const { data: tx } = await supabase
         .from("transactions")
         .select("*, businesses(name)")
@@ -28,7 +28,6 @@ export async function GET(request: Request) {
         return NextResponse.json({ paid: false, error: "Transaction not found" });
       }
 
-      // Already processed — just return success
       if (tx.status === "paid") {
         return NextResponse.json({ paid: true, alreadyProcessed: true });
       }
@@ -38,20 +37,11 @@ export async function GET(request: Request) {
       const businessName = (tx.businesses as { name: string } | null)?.name || "Unknown";
 
       if (txType === "topup") {
-        // Atomic virtual balance increment
-        await supabase.rpc("increment_virtual_balance", {
-          p_business_id: tx.business_id,
-          p_amount: tx.amount,
-        });
+        await addVirtualBalance(supabase, tx.business_id, tx.amount);
       } else {
-        // Add message credits atomically
-        await supabase.rpc("add_credits", {
-          p_business_id: tx.business_id,
-          p_credits: tx.credits_added,
-        });
+        await addCredits(supabase, tx.business_id, tx.credits_added);
       }
 
-      // Mark paid
       await supabase
         .from("transactions")
         .update({
@@ -61,7 +51,6 @@ export async function GET(request: Request) {
         })
         .eq("qpay_invoice_id", invoiceId);
 
-      // Notify admin
       await notifyPaymentReceived(businessName, tx.amount, txType as "topup" | "message_pack");
 
       return NextResponse.json({ paid: true, type: txType });

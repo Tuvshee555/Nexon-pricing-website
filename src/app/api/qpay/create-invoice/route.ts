@@ -4,6 +4,9 @@ import { createInvoice } from "@/lib/qpay";
 
 export async function POST(request: Request) {
   try {
+    // Read body FIRST before cookies() is accessed
+    const { businessId, amount, credits, type = "message_pack" } = await request.json();
+
     const supabase = await createClient();
     const {
       data: { user },
@@ -12,8 +15,6 @@ export async function POST(request: Request) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const { businessId, amount, credits, type = "message_pack" } = await request.json();
 
     if (!businessId || !amount) {
       return NextResponse.json({ error: "Missing parameters" }, { status: 400 });

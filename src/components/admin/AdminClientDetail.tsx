@@ -294,20 +294,30 @@ export default function AdminClientDetail({ business, logs, transactions }: Prop
               </select>
             </div>
 
-            {editForm.plan_type === "monthly" && (
-              <div>
-                <label className="block text-sm text-text-secondary mb-1">Сарын тариф</label>
-                <select
-                  value={editForm.monthly_tier}
-                  onChange={(e) => setEditForm({ ...editForm, monthly_tier: e.target.value })}
-                  className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-primary"
-                >
-                  {MONTHLY_PLANS.map((p) => (
-                    <option key={p.tier} value={p.tier}>{p.nameMn}</option>
-                  ))}
-                </select>
-              </div>
-            )}
+            {editForm.plan_type === "monthly" && (() => {
+              const selected = MONTHLY_PLANS.find((p) => p.tier === editForm.monthly_tier);
+              return (
+                <div className="space-y-2">
+                  <label className="block text-sm text-text-secondary mb-1">Сарын тариф</label>
+                  <select
+                    value={editForm.monthly_tier}
+                    onChange={(e) => setEditForm({ ...editForm, monthly_tier: e.target.value })}
+                    className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-primary"
+                  >
+                    {MONTHLY_PLANS.filter((p) => p.tier !== "enterprise").map((p) => (
+                      <option key={p.tier} value={p.tier}>
+                        {p.nameMn} — {p.price.toLocaleString()}₮/сар — {p.messageLimit.toLocaleString()} мессеж
+                      </option>
+                    ))}
+                  </select>
+                  {selected && selected.tier !== "enterprise" && (
+                    <div className="bg-surface-2 rounded-lg px-3 py-2 text-xs text-text-secondary">
+                      💰 {selected.price.toLocaleString()}₮/сар &nbsp;·&nbsp; 💬 {selected.messageLimit.toLocaleString()} мессеж/сар
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             <div>
               <label className="block text-sm text-text-secondary mb-1">Бот тохиргоо</label>

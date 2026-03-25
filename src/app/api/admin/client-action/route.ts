@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { MONTHLY_PLANS } from "@/types";
+import { addCredits, addVirtualBalance } from "@/lib/credits";
 
 export async function POST(request: Request) {
   try {
+    // Read body FIRST — before cookies() is called by createClient()
+    // Next.js 14 can fail to read request body after cookies() is accessed
+    const body = await request.json();
+    const { businessId, action } = body;
+
     const supabase = await createClient();
     const {
       data: { user },
@@ -11,7 +17,9 @@ export async function POST(request: Request) {
 
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { data: userData } = await supabase
+    const adminClient = await createAdminClient();
+
+    const { data: userData } = await adminClient
       .from("users")
       .select("role")
       .eq("id", user.id)
@@ -20,10 +28,6 @@ export async function POST(request: Request) {
     if (userData?.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-
-    const adminClient = await createAdminClient();
-    const body = await request.json();
-    const { businessId, action } = body;
 
     switch (action) {
       case "activate":
@@ -52,10 +56,7 @@ export async function POST(request: Request) {
         if (!credits || credits <= 0) {
           return NextResponse.json({ error: "Invalid credits" }, { status: 400 });
         }
-        await adminClient.rpc("add_credits", {
-          p_business_id: businessId,
-          p_credits: credits,
-        });
+        await addCredits(adminClient, businessId, credits);
         await adminClient.from("transactions").insert({
           business_id: businessId,
           amount: 0,
@@ -73,15 +74,7 @@ export async function POST(request: Request) {
         if (!amount || amount <= 0) {
           return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
         }
-        const { data: biz } = await adminClient
-          .from("businesses")
-          .select("virtual_balance")
-          .eq("id", businessId)
-          .single();
-        await adminClient
-          .from("businesses")
-          .update({ virtual_balance: (biz?.virtual_balance || 0) + amount })
-          .eq("id", businessId);
+        await addVirtualBalance(adminClient, businessId, amount);
         await adminClient.from("transactions").insert({
           business_id: businessId,
           amount,
@@ -113,6 +106,56 @@ export async function POST(request: Request) {
           external_id: body.external_id,
         });
         break;
+
+      case "setup_business": {
+        // Create a business for an existing user who registered but has no business
+        const { userId, businessName, platforms, planType, monthlyTier, initialCredits, botPrompt } = body;
+        if (!userId || !businessName) {
+          return NextResponse.json({ error: "userId and businessName required" }, { status: 400 });
+        }
+
+        const { data: newBiz, error: bizErr } = await adminClient
+          .from("businesses")
+          .insert({
+            user_id: userId,
+            name: businessName,
+            platforms: platforms || [],
+            bot_prompt: botPrompt || "",
+            contact_phone: "",
+            contact_email: "",
+            status: "active",
+          })
+          .select()
+          .single();
+
+        if (bizErr || !newBiz) {
+          return NextResponse.json({ error: bizErr?.message || "Failed to create business" }, { status: 500 });
+        }
+
+        // Create plan
+        const mp = MONTHLY_PLANS.find((p) => p.tier === (monthlyTier || "basic"));
+        await adminClient.from("plans").insert({
+          business_id: newBiz.id,
+          plan_type: planType || "credit",
+          monthly_tier: planType === "monthly" ? (monthlyTier || "basic") : null,
+          monthly_message_limit:
+            planType === "monthly"
+              ? mp?.messageLimit === Infinity ? -1 : mp?.messageLimit || null
+              : null,
+          monthly_price: planType === "monthly" ? mp?.price || null : null,
+          billing_cycle_start: new Date().toISOString().split("T")[0],
+        });
+
+        // Create credits
+        const initCredits = parseInt(initialCredits) || 0;
+        await adminClient.from("credits").insert({
+          business_id: newBiz.id,
+          balance: initCredits,
+          total_purchased: initCredits,
+        });
+
+        return NextResponse.json({ success: true, businessId: newBiz.id });
+      }
 
       case "update": {
         await adminClient

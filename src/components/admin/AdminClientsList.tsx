@@ -160,7 +160,7 @@ export default function AdminClientsList({ clients }: { clients: Client[] }) {
                       </Link>
                     ) : (
                       <Link
-                        href={`/admin/clients/new?userId=${client.userId}&email=${encodeURIComponent(client.email)}`}
+                        href={`/admin/clients/setup/${client.userId}`}
                         className="text-accent hover:text-accent/80 text-xs font-semibold border border-accent/30 px-3 py-1.5 rounded-lg transition-colors"
                       >
                         Тохируулах

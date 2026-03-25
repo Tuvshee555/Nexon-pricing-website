@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
 export async function createClient() {
@@ -27,18 +28,16 @@ export async function createClient() {
 }
 
 export async function createAdminClient() {
-  // Service role client — must NOT read/write user cookies.
-  // Sharing cookies with the service-role key corrupts the
-  // user's auth session and breaks client-side navigation.
-  return createServerClient(
+  // Service role client — uses supabase-js directly (NOT the SSR wrapper).
+  // The SSR wrapper ties auth to cookies, which is wrong for service role.
+  // This client bypasses RLS and has full access to all tables.
+  return createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
-      cookies: {
-        getAll() {
-          return [];
-        },
-        setAll() {},
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
       },
     }
   );

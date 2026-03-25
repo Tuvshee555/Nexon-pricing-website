@@ -118,16 +118,22 @@ export async function POST(request: Request) {
         // Calculate credits used (ceil total_tokens / 1000, min 1)
         const creditsUsed = Math.max(1, Math.ceil(usage.total_tokens / 1000));
 
-        // Deduct credits (with row locking)
-        const { data: deducted } = await supabase.rpc("deduct_credits", {
-          p_business_id: businessId,
-          p_credits: creditsUsed,
-        });
+        // Deduct credits — direct update
+        const { data: curCredits } = await supabase
+          .from("credits")
+          .select("balance")
+          .eq("business_id", businessId)
+          .single();
 
-        if (!deducted) {
-          await sendFacebookMessage(senderId, "Таны кредит дууссан байна.", platform, entry.id);
+        if (!curCredits || curCredits.balance < creditsUsed) {
+          await sendFacebookMessage(senderId, "Таны мессеж дууссан байна. Nexon хяналтын самбараас мессеж нэмнэ үү.", platform, entry.id);
           continue;
         }
+
+        await supabase
+          .from("credits")
+          .update({ balance: curCredits.balance - creditsUsed })
+          .eq("business_id", businessId);
 
         // Log message
         await supabase.from("message_logs").insert({
