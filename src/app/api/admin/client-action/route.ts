@@ -56,7 +56,6 @@ export async function POST(request: Request) {
           p_business_id: businessId,
           p_credits: credits,
         });
-        // Log as manual transaction
         await adminClient.from("transactions").insert({
           business_id: businessId,
           amount: 0,
@@ -64,7 +63,46 @@ export async function POST(request: Request) {
           payment_method: "manual",
           status: "paid",
           paid_at: new Date().toISOString(),
+          transaction_type: "manual",
         });
+        break;
+      }
+
+      case "add_balance": {
+        const amount = parseInt(body.amount);
+        if (!amount || amount <= 0) {
+          return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
+        }
+        const { data: biz } = await adminClient
+          .from("businesses")
+          .select("virtual_balance")
+          .eq("id", businessId)
+          .single();
+        await adminClient
+          .from("businesses")
+          .update({ virtual_balance: (biz?.virtual_balance || 0) + amount })
+          .eq("id", businessId);
+        await adminClient.from("transactions").insert({
+          business_id: businessId,
+          amount,
+          credits_added: 0,
+          payment_method: "manual",
+          status: "paid",
+          paid_at: new Date().toISOString(),
+          transaction_type: "topup",
+        });
+        break;
+      }
+
+      case "set_billing": {
+        await adminClient
+          .from("businesses")
+          .update({
+            subscription_price: parseInt(body.subscription_price) || 0,
+            billing_active: body.billing_active === true,
+            next_billing_date: body.next_billing_date || null,
+          })
+          .eq("id", businessId);
         break;
       }
 

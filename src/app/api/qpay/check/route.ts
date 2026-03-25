@@ -1,18 +1,15 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { checkPayment } from "@/lib/qpay";
-import { notifyCreditspurchased } from "@/lib/telegram";
+import { notifyPaymentReceived } from "@/lib/telegram";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const invoiceId = searchParams.get("invoice_id");
-    const businessId = searchParams.get("business_id");
-    const credits = parseInt(searchParams.get("credits") || "0");
-    const amount = parseInt(searchParams.get("amount") || "0");
 
-    if (!invoiceId || !businessId) {
-      return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
+    if (!invoiceId) {
+      return NextResponse.json({ error: "Missing invoice_id" }, { status: 400 });
     }
 
     const result = await checkPayment(invoiceId);
@@ -20,26 +17,41 @@ export async function GET(request: Request) {
     if (result.count > 0 && result.rows[0]?.payment_status === "PAID") {
       const supabase = await createAdminClient();
 
-      // Check if already processed
+      // Load transaction
       const { data: tx } = await supabase
         .from("transactions")
-        .select("status")
+        .select("*, businesses(name)")
         .eq("qpay_invoice_id", invoiceId)
         .single();
 
-      if (tx?.status === "paid") {
+      if (!tx) {
+        return NextResponse.json({ paid: false, error: "Transaction not found" });
+      }
+
+      // Already processed — just return success
+      if (tx.status === "paid") {
         return NextResponse.json({ paid: true, alreadyProcessed: true });
       }
 
       const paymentId = result.rows[0].payment_id;
+      const txType = tx.transaction_type || "message_pack";
+      const businessName = (tx.businesses as { name: string } | null)?.name || "Unknown";
 
-      // Add credits
-      await supabase.rpc("add_credits", {
-        p_business_id: businessId,
-        p_credits: credits,
-      });
+      if (txType === "topup") {
+        // Atomic virtual balance increment
+        await supabase.rpc("increment_virtual_balance", {
+          p_business_id: tx.business_id,
+          p_amount: tx.amount,
+        });
+      } else {
+        // Add message credits atomically
+        await supabase.rpc("add_credits", {
+          p_business_id: tx.business_id,
+          p_credits: tx.credits_added,
+        });
+      }
 
-      // Update transaction
+      // Mark paid
       await supabase
         .from("transactions")
         .update({
@@ -50,15 +62,9 @@ export async function GET(request: Request) {
         .eq("qpay_invoice_id", invoiceId);
 
       // Notify admin
-      const { data: business } = await supabase
-        .from("businesses")
-        .select("name")
-        .eq("id", businessId)
-        .single();
+      await notifyPaymentReceived(businessName, tx.amount, txType as "topup" | "message_pack");
 
-      await notifyCreditspurchased(business?.name || "Unknown", amount, credits);
-
-      return NextResponse.json({ paid: true });
+      return NextResponse.json({ paid: true, type: txType });
     }
 
     return NextResponse.json({ paid: false });

@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import ClientDashboard from "@/components/dashboard/ClientDashboard";
 
@@ -16,8 +16,11 @@ export default async function DashboardPage({
 
   if (!user) redirect("/login");
 
+  // Use admin client for all data fetching to bypass RLS
+  const adminClient = await createAdminClient();
+
   // Fetch business
-  const { data: business } = await supabase
+  const { data: business } = await adminClient
     .from("businesses")
     .select("*")
     .eq("user_id", user.id)
@@ -62,38 +65,52 @@ export default async function DashboardPage({
     );
   }
 
-  // Fetch plan
-  const { data: plan } = await supabase
-    .from("plans")
-    .select("*")
-    .eq("business_id", business.id)
-    .single();
+  // Fetch plan, credits, logs in parallel
+  const [
+    { data: plan },
+    { data: credits },
+    { data: logs },
+    { data: monthlyLogs },
+    { data: recentTransactions },
+  ] = await Promise.all([
+    adminClient
+      .from("plans")
+      .select("*")
+      .eq("business_id", business.id)
+      .single(),
 
-  // Fetch credits
-  const { data: credits } = await supabase
-    .from("credits")
-    .select("*")
-    .eq("business_id", business.id)
-    .single();
+    adminClient
+      .from("credits")
+      .select("*")
+      .eq("business_id", business.id)
+      .single(),
 
-  // Fetch recent message logs
-  const { data: logs } = await supabase
-    .from("message_logs")
-    .select("*")
-    .eq("business_id", business.id)
-    .order("logged_at", { ascending: false })
-    .limit(10);
+    adminClient
+      .from("message_logs")
+      .select("*")
+      .eq("business_id", business.id)
+      .order("logged_at", { ascending: false })
+      .limit(10),
 
-  // Messages this month
-  const startOfMonth = new Date();
-  startOfMonth.setDate(1);
-  startOfMonth.setHours(0, 0, 0, 0);
+    (() => {
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+      return adminClient
+        .from("message_logs")
+        .select("message_count, credits_used")
+        .eq("business_id", business.id)
+        .gte("logged_at", startOfMonth.toISOString());
+    })(),
 
-  const { data: monthlyLogs } = await supabase
-    .from("message_logs")
-    .select("message_count, credits_used")
-    .eq("business_id", business.id)
-    .gte("logged_at", startOfMonth.toISOString());
+    adminClient
+      .from("transactions")
+      .select("*")
+      .eq("business_id", business.id)
+      .eq("status", "paid")
+      .order("paid_at", { ascending: false })
+      .limit(5),
+  ]);
 
   const messagesThisMonth =
     monthlyLogs?.reduce((sum, l) => sum + l.message_count, 0) || 0;
@@ -108,6 +125,7 @@ export default async function DashboardPage({
       logs={logs || []}
       messagesThisMonth={messagesThisMonth}
       creditsUsedThisMonth={creditsUsedThisMonth}
+      recentTransactions={recentTransactions || []}
       showWelcome={!!params.welcome}
     />
   );

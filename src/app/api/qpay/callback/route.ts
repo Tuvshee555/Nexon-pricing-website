@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
-import { notifyCreditspurchased } from "@/lib/telegram";
+import { notifyPaymentReceived } from "@/lib/telegram";
 
 export async function POST(request: Request) {
   try {
@@ -13,7 +13,7 @@ export async function POST(request: Request) {
 
     const supabase = await createAdminClient();
 
-    // Get transaction
+    // Get transaction with business name
     const { data: tx } = await supabase
       .from("transactions")
       .select("*, businesses(name)")
@@ -24,13 +24,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true });
     }
 
-    // Add credits
-    await supabase.rpc("add_credits", {
-      p_business_id: tx.business_id,
-      p_credits: tx.credits_added,
-    });
+    const txType = tx.transaction_type || "message_pack";
+    const businessName = (tx.businesses as { name: string } | null)?.name || "Unknown";
 
-    // Update transaction
+    if (txType === "topup") {
+      // Atomic virtual balance increment — no race conditions
+      await supabase.rpc("increment_virtual_balance", {
+        p_business_id: tx.business_id,
+        p_amount: tx.amount,
+      });
+    } else {
+      // Add message credits atomically
+      await supabase.rpc("add_credits", {
+        p_business_id: tx.business_id,
+        p_credits: tx.credits_added,
+      });
+    }
+
+    // Update transaction to paid
     await supabase
       .from("transactions")
       .update({
@@ -41,8 +52,7 @@ export async function POST(request: Request) {
       .eq("id", tx.id);
 
     // Notify admin
-    const businessName = (tx.businesses as {name: string} | null)?.name || "Unknown";
-    await notifyCreditspurchased(businessName, tx.amount, tx.credits_added);
+    await notifyPaymentReceived(businessName, tx.amount, txType as "topup" | "message_pack");
 
     return NextResponse.json({ success: true });
   } catch (err) {

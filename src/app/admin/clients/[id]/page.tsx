@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import AdminClientDetail from "@/components/admin/AdminClientDetail";
 
@@ -8,9 +8,9 @@ export default async function AdminClientDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
+  const adminClient = await createAdminClient();
 
-  const { data: business } = await supabase
+  const { data: business } = await adminClient
     .from("businesses")
     .select(`
       *,
@@ -24,14 +24,14 @@ export default async function AdminClientDetailPage({
 
   if (!business) notFound();
 
-  const { data: messageLogs } = await supabase
+  const { data: messageLogs } = await adminClient
     .from("message_logs")
     .select("*")
     .eq("business_id", id)
     .order("logged_at", { ascending: false })
     .limit(20);
 
-  const { data: transactions } = await supabase
+  const { data: transactions } = await adminClient
     .from("transactions")
     .select("*")
     .eq("business_id", id)

@@ -19,6 +19,10 @@ export interface Business {
   contact_phone: string;
   contact_email: string;
   status: BusinessStatus;
+  virtual_balance: number;
+  subscription_price: number;
+  next_billing_date: string | null;
+  billing_active: boolean;
 }
 
 export type PlanType = "monthly" | "credit";
@@ -56,6 +60,8 @@ export interface MessageLog {
 
 export type TransactionStatus = "pending" | "paid" | "failed" | "cancelled";
 
+export type TransactionType = "topup" | "subscription" | "message_pack" | "manual";
+
 export interface Transaction {
   id: string;
   business_id: string;
@@ -65,6 +71,7 @@ export interface Transaction {
   qpay_invoice_id?: string;
   qpay_payment_id?: string;
   status: TransactionStatus;
+  transaction_type?: TransactionType;
   paid_at?: string;
 }
 
