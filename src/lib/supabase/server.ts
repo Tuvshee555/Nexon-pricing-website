@@ -31,6 +31,10 @@ export async function createAdminClient() {
   // Service role client — uses supabase-js directly (NOT the SSR wrapper).
   // The SSR wrapper ties auth to cookies, which is wrong for service role.
   // This client bypasses RLS and has full access to all tables.
+  //
+  // IMPORTANT: Next.js 14 caches fetch() by default (Data Cache).
+  // Supabase-js uses fetch internally, so queries get stale cached results.
+  // We override fetch with cache:'no-store' to always hit the database.
   return createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -38,6 +42,10 @@ export async function createAdminClient() {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
+      },
+      global: {
+        fetch: (input: RequestInfo | URL, init?: RequestInit) =>
+          fetch(input, { ...init, cache: "no-store" }),
       },
     }
   );

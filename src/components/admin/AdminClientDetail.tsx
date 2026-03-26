@@ -77,15 +77,25 @@ export default function AdminClientDetail({ business, logs, transactions }: Prop
   const [newPlatform, setNewPlatform] = useState({ platform: "instagram", external_id: "" });
   const [activeTab, setActiveTab] = useState<"overview" | "messages" | "payments">("overview");
 
+  const [actionError, setActionError] = useState("");
+
   const callAction = async (action: string, payload?: object) => {
     setLoading(action);
+    setActionError("");
     try {
       const res = await fetch("/api/admin/client-action", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ businessId: business.id, action, ...payload }),
       });
-      if (res.ok) router.refresh();
+      const data = await res.json();
+      if (!res.ok) {
+        setActionError(data.error || "Алдаа гарлаа");
+        return;
+      }
+      router.refresh();
+    } catch {
+      setActionError("Сервертэй холбогдож чадсангүй");
     } finally {
       setLoading(null);
     }
@@ -123,6 +133,13 @@ export default function AdminClientDetail({ business, logs, transactions }: Prop
     const amount = parseInt(messagesInput);
     if (!amount || amount <= 0) return;
     await callAction("add_credits", { credits: amount });
+    setMessagesInput("");
+  };
+
+  const handleReduceMessages = async () => {
+    const amount = parseInt(messagesInput);
+    if (!amount || amount <= 0) return;
+    await callAction("reduce_credits", { credits: amount });
     setMessagesInput("");
   };
 
@@ -208,6 +225,12 @@ export default function AdminClientDetail({ business, logs, transactions }: Prop
           {loading === "cancel" ? "..." : "Цуцлах"}
         </button>
       </div>
+
+      {actionError && (
+        <div className="bg-danger/10 border border-danger/30 text-danger rounded-lg p-3 text-sm">
+          {actionError}
+        </div>
+      )}
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -369,6 +392,13 @@ export default function AdminClientDetail({ business, logs, transactions }: Prop
                   className="px-4 py-2 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
                 >
                   {loading === "add_credits" ? "..." : "Нэмэх"}
+                </button>
+                <button
+                  onClick={handleReduceMessages}
+                  disabled={loading === "reduce_credits"}
+                  className="px-4 py-2 bg-danger/10 hover:bg-danger/20 border border-danger/30 disabled:opacity-50 text-danger text-sm font-semibold rounded-lg transition-colors"
+                >
+                  {loading === "reduce_credits" ? "..." : "Хасах"}
                 </button>
               </div>
             </div>

@@ -69,6 +69,25 @@ export async function POST(request: Request) {
         break;
       }
 
+      case "reduce_credits": {
+        const reduceAmount = parseInt(body.credits);
+        if (!reduceAmount || reduceAmount <= 0) {
+          return NextResponse.json({ error: "Invalid credits" }, { status: 400 });
+        }
+        const { data: curCredits } = await adminClient
+          .from("credits")
+          .select("balance")
+          .eq("business_id", businessId)
+          .single();
+
+        const newBalance = Math.max(0, (curCredits?.balance || 0) - reduceAmount);
+        await adminClient
+          .from("credits")
+          .update({ balance: newBalance })
+          .eq("business_id", businessId);
+        break;
+      }
+
       case "add_balance": {
         const amount = parseInt(body.amount);
         if (!amount || amount <= 0) {
