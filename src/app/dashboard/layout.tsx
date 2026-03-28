@@ -24,6 +24,8 @@ export default async function DashboardLayout({
     .eq("id", user.id)
     .single();
 
+  if (userData?.role === "admin") redirect("/admin");
+
   return (
     <div className="min-h-screen bg-background flex">
       <DashboardSidebar user={user} role={userData?.role || "client"} />
