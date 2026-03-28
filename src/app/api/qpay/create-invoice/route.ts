@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { createInvoice } from "@/lib/qpay";
+import { insertTransaction } from "@/lib/transactions";
 
 export async function POST(request: Request) {
   try {
@@ -55,7 +56,7 @@ export async function POST(request: Request) {
     });
 
     // Create pending transaction using admin client
-    const { error: txError } = await adminClient.from("transactions").insert({
+    const { error: txError } = await insertTransaction(adminClient, {
       business_id: businessId,
       amount,
       credits_added: type === "message_pack" ? credits : 0,

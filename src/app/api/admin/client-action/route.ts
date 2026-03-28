@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { MONTHLY_PLANS } from "@/types";
 import { addCredits, addVirtualBalance } from "@/lib/credits";
+import { insertTransaction } from "@/lib/transactions";
 
 export async function POST(request: Request) {
   try {
@@ -57,7 +58,7 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: "Invalid credits" }, { status: 400 });
         }
         await addCredits(adminClient, businessId, credits);
-        await adminClient.from("transactions").insert({
+        await insertTransaction(adminClient, {
           business_id: businessId,
           amount: 0,
           credits_added: credits,
@@ -94,7 +95,7 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
         }
         await addVirtualBalance(adminClient, businessId, amount);
-        await adminClient.from("transactions").insert({
+        await insertTransaction(adminClient, {
           business_id: businessId,
           amount,
           credits_added: 0,

@@ -88,6 +88,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   qpay_invoice_id TEXT,
   qpay_payment_id TEXT,
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'failed', 'cancelled')),
+  transaction_type TEXT CHECK (transaction_type IN ('topup', 'subscription', 'message_pack', 'manual')),
   paid_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

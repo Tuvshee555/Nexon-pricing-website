@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/server";
+import { inferTransactionType } from "@/lib/transactions";
 import Link from "next/link";
 
 const TX_TYPE_LABEL: Record<string, string> = {
@@ -213,7 +214,7 @@ export default async function AdminOverviewPage() {
                           {tx.businesses?.name || "—"}
                         </td>
                         <td className="px-5 py-3 text-text-secondary text-xs">
-                          {TX_TYPE_LABEL[tx.transaction_type || ""] || tx.payment_method}
+                          {TX_TYPE_LABEL[inferTransactionType(tx)] || tx.payment_method}
                         </td>
                         <td className="px-5 py-3 text-right text-success font-medium">
                           {tx.amount > 0 ? `${tx.amount.toLocaleString()}₮` : "—"}

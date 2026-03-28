@@ -4,6 +4,7 @@ import {
   notifySubscriptionDeducted,
   notifyLowBalance,
 } from "@/lib/telegram";
+import { insertTransaction } from "@/lib/transactions";
 
 export async function POST() {
   try {
@@ -71,7 +72,7 @@ export async function POST() {
           .eq("id", biz.id);
 
         // Log subscription transaction
-        await adminClient.from("transactions").insert({
+        await insertTransaction(adminClient, {
           business_id: biz.id,
           amount: biz.subscription_price,
           credits_added: 0,

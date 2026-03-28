@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { MONTHLY_PLANS } from "@/types";
 import type { Business, Plan, Credits, MessageLog } from "@/types";
+import { inferTransactionType } from "@/lib/transactions";
 
 interface RecentTransaction {
   id: string;
@@ -315,7 +316,7 @@ export default function ClientDashboard({
                       {tx.paid_at ? new Date(tx.paid_at).toLocaleDateString("mn-MN") : "—"}
                     </td>
                     <td className="px-6 py-3 text-text-secondary text-xs">
-                      {TX_TYPE_LABEL[tx.transaction_type || ""] || "—"}
+                      {TX_TYPE_LABEL[inferTransactionType(tx)] || "—"}
                     </td>
                     <td className="px-6 py-3 text-right text-success font-medium">
                       {tx.amount > 0 ? `${tx.amount.toLocaleString()}₮` : "—"}

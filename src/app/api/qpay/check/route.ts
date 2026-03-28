@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { checkPayment } from "@/lib/qpay";
 import { notifyPaymentReceived } from "@/lib/telegram";
 import { addCredits, addVirtualBalance } from "@/lib/credits";
+import { inferTransactionType } from "@/lib/transactions";
 
 export async function GET(request: Request) {
   try {
@@ -33,7 +34,7 @@ export async function GET(request: Request) {
       }
 
       const paymentId = result.rows[0].payment_id;
-      const txType = tx.transaction_type || "message_pack";
+      const txType = inferTransactionType(tx);
       const businessName = (tx.businesses as { name: string } | null)?.name || "Unknown";
 
       if (txType === "topup") {

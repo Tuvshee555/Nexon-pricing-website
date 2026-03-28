@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { MONTHLY_PLANS } from "@/types";
+import { insertTransaction } from "@/lib/transactions";
 
 export async function POST(request: Request) {
   try {
@@ -109,13 +110,14 @@ export async function POST(request: Request) {
     });
 
     if (credits > 0) {
-      await adminClient.from("transactions").insert({
+      await insertTransaction(adminClient, {
         business_id: business.id,
         amount: 0,
         credits_added: credits,
         payment_method: "manual",
         status: "paid",
         paid_at: new Date().toISOString(),
+        transaction_type: "manual",
       });
     }
 

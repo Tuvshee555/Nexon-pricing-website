@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { MONTHLY_PLANS } from "@/types";
+import { inferTransactionType } from "@/lib/transactions";
 
 interface BusinessData {
   id: string;
@@ -607,7 +608,7 @@ export default function AdminClientDetail({ business, logs, transactions }: Prop
                         {tx.credits_added > 0 ? tx.credits_added : "—"}
                       </td>
                       <td className="px-6 py-3 text-text-secondary text-xs">
-                        {TX_TYPE_LABEL[tx.transaction_type || ""] || tx.payment_method}
+                        {TX_TYPE_LABEL[inferTransactionType(tx)] || tx.payment_method}
                       </td>
                       <td className="px-6 py-3">
                         <span className={`text-xs px-2 py-0.5 rounded-full border ${

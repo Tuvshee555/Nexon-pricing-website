@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { notifyPaymentReceived } from "@/lib/telegram";
 import { addCredits, addVirtualBalance } from "@/lib/credits";
+import { inferTransactionType } from "@/lib/transactions";
 
 export async function POST(request: Request) {
   try {
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true });
     }
 
-    const txType = tx.transaction_type || "message_pack";
+    const txType = inferTransactionType(tx);
     const businessName = (tx.businesses as { name: string } | null)?.name || "Unknown";
 
     if (txType === "topup") {
