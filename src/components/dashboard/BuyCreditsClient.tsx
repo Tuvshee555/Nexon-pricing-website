@@ -14,7 +14,7 @@ interface Props {
 type PaymentState = "select" | "qr" | "success" | "error";
 type PaymentTab = "balance" | "messages";
 
-const TOPUP_PRESETS = [50000, 100000, 200000, 300000];
+const TOPUP_PRESETS = [100000, 200000, 300000, 500000];
 
 export default function BuyCreditsClient({
   businessId,

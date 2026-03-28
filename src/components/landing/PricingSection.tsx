@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { MONTHLY_PLANS, CREDIT_PACKS, MonthlyTier } from "@/types";
+import { MONTHLY_PLANS, CREDIT_PACKS, SETUP_FEE, MonthlyTier } from "@/types";
 
 const pricingContent = {
   mn: {
@@ -40,9 +40,9 @@ const pricingContent = {
     packPerMessage: "1 мессежийн өртөг",
     packUseTitle: "Илүү тохиромжтой хэрэглээ",
     packUses: {
-      10000: "Жижиг туршилт, bot-ийн хариултыг шалгах эхлэл",
-      25000: "Дунд ачаалалтай дэлгүүр, богино кампанит ажил",
-      50000: "Идэвхтэй борлуулалттай хуудас, тогтмол сурталчилгаа",
+      25000: "Жижиг туршилт, bot-ийн хариултыг шалгах эхлэл",
+      50000: "Дунд ачаалалтай дэлгүүр, богино кампанит ажил",
+      100000: "Идэвхтэй борлуулалттай хуудас, тогтмол сурталчилгаа",
     },
     planDetails: {
       basic: {
@@ -113,9 +113,9 @@ const pricingContent = {
     packPerMessage: "cost per message",
     packUseTitle: "Best use case",
     packUses: {
-      10000: "Small pilot to test bot quality and common customer questions",
-      25000: "Moderate traffic store or short sales campaign",
-      50000: "High-activity page with repeat promotions or frequent inquiries",
+      25000: "Small pilot to test bot quality and common customer questions",
+      50000: "Moderate traffic store or short sales campaign",
+      100000: "High-activity page with repeat promotions or frequent inquiries",
     },
     planDetails: {
       basic: {
@@ -194,6 +194,29 @@ export default function PricingSection() {
                   <p className="text-sm leading-relaxed text-text-secondary">{item}</p>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Setup fee */}
+          <div className="mt-8 rounded-[2rem] border border-accent/30 bg-accent/5 p-6 text-left">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-text-primary">
+                  {lang === "mn"
+                    ? `Нэг удаагийн тохиргооны төлбөр: ${SETUP_FEE.toLocaleString()}₮`
+                    : `One-time setup fee: ${SETUP_FEE.toLocaleString()}₮`}
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-text-secondary">
+                  {lang === "mn"
+                    ? "Энэ нь таны ботыг бүрэн тохируулж, Facebook болон Instagram-д холбох үйлчилгээ юм."
+                    : "This covers full bot configuration and connection to your Facebook and Instagram pages."}
+                </p>
+              </div>
             </div>
           </div>
 
@@ -353,7 +376,7 @@ export default function PricingSection() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               {CREDIT_PACKS.map((pack) => (
                 <div
                   key={pack.amount}
@@ -406,6 +429,36 @@ export default function PricingSection() {
                   </Link>
                 </div>
               ))}
+
+              {/* Custom pack */}
+              <div className="card p-6 flex flex-col border-dashed">
+                <div className="text-3xl font-black text-text-secondary mb-2">
+                  {lang === "mn" ? "Тусгай хэмжээ" : "Custom"}
+                </div>
+                <div className="text-text-secondary text-sm mb-4">
+                  {lang === "mn" ? "Тохиролцооны" : "Negotiated"}
+                </div>
+
+                <div className="rounded-2xl border border-border/80 bg-background/60 p-4 mb-4">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted">
+                    {lang === "mn" ? "Том хэмжээний захиалга" : "Bulk order"}
+                  </div>
+                  <div className="mt-2 text-lg font-black text-text-primary">
+                    {lang === "mn" ? "Хямд үнэ" : "Better rate"}
+                  </div>
+                </div>
+
+                <Link
+                  href="#contact"
+                  className="mt-auto w-full text-center border border-border hover:border-primary/50 text-text-secondary hover:text-text-primary py-3 rounded-xl font-semibold text-sm transition-colors"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                >
+                  {t("pricing_contact")}
+                </Link>
+              </div>
             </div>
           </div>
         )}

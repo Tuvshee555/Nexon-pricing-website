@@ -88,10 +88,12 @@ export interface CreditPack {
   popular?: boolean;
 }
 
+export const SETUP_FEE = 75000;
+
 export const CREDIT_PACKS: CreditPack[] = [
-  { amount: 10000, credits: 80 },
-  { amount: 25000, credits: 200 },
-  { amount: 50000, credits: 450, popular: true },
+  { amount: 25000, credits: 150 },
+  { amount: 50000, credits: 400, popular: true },
+  { amount: 100000, credits: 900 },
 ];
 
 export const MONTHLY_PLANS = [
@@ -99,24 +101,24 @@ export const MONTHLY_PLANS = [
     tier: "basic" as MonthlyTier,
     nameMn: "Үндсэн",
     nameEn: "Basic",
-    price: 49000,
-    messageLimit: 500,
+    price: 79000,
+    messageLimit: 600,
     popular: false,
   },
   {
     tier: "standard" as MonthlyTier,
     nameMn: "Стандарт",
     nameEn: "Standard",
-    price: 89000,
-    messageLimit: 1200,
+    price: 129000,
+    messageLimit: 1500,
     popular: true,
   },
   {
     tier: "premium" as MonthlyTier,
     nameMn: "Премиум",
     nameEn: "Premium",
-    price: 149000,
-    messageLimit: 2500,
+    price: 199000,
+    messageLimit: 3000,
     popular: false,
   },
   {
