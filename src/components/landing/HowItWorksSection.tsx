@@ -1,9 +1,13 @@
 "use client";
 
 import { useLanguage } from "@/contexts/LanguageContext";
+import { motion, useInView } from "framer-motion";
+import { useRef } from "react";
 
 export default function HowItWorksSection() {
   const { t } = useLanguage();
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-80px" });
 
   const steps = [
     {
@@ -39,34 +43,77 @@ export default function HowItWorksSection() {
   ];
 
   return (
-    <section id="how-it-works" className="py-24 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-16">
+    <section id="how-it-works" ref={ref} className="py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      {/* Background glow */}
+      <div className="pointer-events-none absolute inset-0 flex items-end justify-center">
+        <div
+          className="h-[30rem] w-[50rem] rounded-full opacity-8"
+          style={{
+            background: "radial-gradient(ellipse, rgba(0,212,255,0.3) 0%, transparent 70%)",
+            filter: "blur(80px)",
+          }}
+        />
+      </div>
+
+      <div className="max-w-7xl mx-auto relative">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+          className="text-center mb-16"
+        >
           <h2 className="text-4xl sm:text-5xl font-black text-text-primary">
             {t("how_title")}
           </h2>
-        </div>
+          <div className="mt-6 mx-auto h-px w-24 bg-gradient-to-r from-transparent via-accent/60 to-transparent" />
+        </motion.div>
 
         <div className="relative">
-          {/* Connection line */}
-          <div className="hidden lg:block absolute top-1/2 left-1/4 right-1/4 h-0.5 bg-gradient-to-r from-primary to-accent -translate-y-1/2" />
+          {/* Animated connection line */}
+          <motion.div
+            initial={{ scaleX: 0 }}
+            animate={isInView ? { scaleX: 1 } : {}}
+            transition={{ delay: 0.5, duration: 1, ease: "easeInOut" }}
+            className="hidden lg:block absolute top-10 left-[20%] right-[20%] h-px origin-left"
+            style={{
+              background: "linear-gradient(90deg, rgba(15,79,232,0.8), rgba(0,212,255,0.8))",
+              boxShadow: "0 0 8px rgba(0,212,255,0.4)",
+            }}
+          />
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {steps.map((step, i) => (
-              <div key={i} className="relative text-center">
-                <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-card-gradient border border-primary/30 text-accent mb-6 relative z-10">
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 40 }}
+                animate={isInView ? { opacity: 1, y: 0 } : {}}
+                transition={{ delay: 0.2 + i * 0.2, duration: 0.7, ease: "easeOut" }}
+                className="relative text-center group"
+              >
+                <motion.div
+                  whileHover={{ scale: 1.08, rotate: 3 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                  className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-card-gradient border border-primary/30 text-accent mb-6 relative z-10 transition-all duration-300 group-hover:border-primary/60 group-hover:shadow-lg"
+                  style={{ boxShadow: "0 0 0 0 rgba(0,212,255,0.3)" }}
+                >
                   {step.icon}
-                  <span className="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full text-white text-xs font-bold flex items-center justify-center">
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={isInView ? { scale: 1 } : {}}
+                    transition={{ delay: 0.4 + i * 0.2, type: "spring", stiffness: 400 }}
+                    className="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full text-white text-xs font-bold flex items-center justify-center"
+                    style={{ boxShadow: "0 0 12px rgba(15,79,232,0.6)" }}
+                  >
                     {i + 1}
-                  </span>
-                </div>
-                <h3 className="text-xl font-bold text-text-primary mb-3">
+                  </motion.span>
+                </motion.div>
+                <h3 className="text-xl font-bold text-text-primary mb-3 group-hover:text-gradient transition-all duration-300">
                   {t(step.titleKey)}
                 </h3>
                 <p className="text-text-secondary leading-relaxed">
                   {t(step.descKey)}
                 </p>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>

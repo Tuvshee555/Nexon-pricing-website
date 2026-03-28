@@ -1,6 +1,8 @@
 "use client";
 
 import { useLanguage } from "@/contexts/LanguageContext";
+import { motion, useInView } from "framer-motion";
+import { useRef } from "react";
 
 const features = [
   {
@@ -12,7 +14,10 @@ const features = [
     titleKey: "feature1_title" as const,
     descKey: "feature1_desc" as const,
     gradient: "from-blue-500/20 to-cyan-500/20",
-    border: "border-blue-500/30",
+    border: "border-blue-500/20",
+    hoverBorder: "hover:border-blue-400/50",
+    iconGlow: "rgba(15,79,232,0.5)",
+    iconBg: "bg-blue-500/10",
   },
   {
     icon: (
@@ -24,7 +29,10 @@ const features = [
     titleKey: "feature2_title" as const,
     descKey: "feature2_desc" as const,
     gradient: "from-purple-500/20 to-pink-500/20",
-    border: "border-purple-500/30",
+    border: "border-purple-500/20",
+    hoverBorder: "hover:border-purple-400/50",
+    iconGlow: "rgba(168,85,247,0.5)",
+    iconBg: "bg-purple-500/10",
   },
   {
     icon: (
@@ -35,39 +43,84 @@ const features = [
     titleKey: "feature3_title" as const,
     descKey: "feature3_desc" as const,
     gradient: "from-green-500/20 to-teal-500/20",
-    border: "border-green-500/30",
+    border: "border-green-500/20",
+    hoverBorder: "hover:border-green-400/50",
+    iconGlow: "rgba(16,185,129,0.5)",
+    iconBg: "bg-green-500/10",
   },
 ];
 
 export default function FeaturesSection() {
   const { t } = useLanguage();
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-80px" });
 
   return (
-    <section id="features" className="py-24 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-16">
+    <section id="features" ref={ref} className="py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      {/* Subtle background glow */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <div
+          className="h-[40rem] w-[60rem] rounded-full opacity-10"
+          style={{
+            background: "radial-gradient(ellipse, rgba(15,79,232,0.6) 0%, transparent 70%)",
+            filter: "blur(80px)",
+          }}
+        />
+      </div>
+
+      <div className="max-w-7xl mx-auto relative">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+          className="text-center mb-16"
+        >
           <h2 className="text-4xl sm:text-5xl font-black text-text-primary mb-4">
             {t("features_title")}
           </h2>
           <p className="text-text-secondary text-lg max-w-2xl mx-auto">
             {t("features_subtitle")}
           </p>
-        </div>
+          {/* Decorative line */}
+          <div className="mt-6 mx-auto h-px w-24 bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+        </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {features.map((feature, i) => (
-            <div
+            <motion.div
               key={i}
-              className={`relative p-8 rounded-2xl border ${feature.border} bg-gradient-to-br ${feature.gradient} backdrop-blur-sm hover:scale-105 transition-transform duration-300`}
+              initial={{ opacity: 0, y: 40 }}
+              animate={isInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ delay: 0.15 + i * 0.15, duration: 0.7, ease: "easeOut" }}
+              className={`group relative p-8 rounded-2xl border ${feature.border} ${feature.hoverBorder} bg-gradient-to-br ${feature.gradient} backdrop-blur-sm transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl cursor-default`}
             >
-              <div className="text-accent mb-5">{feature.icon}</div>
-              <h3 className="text-xl font-bold text-text-primary mb-3">
+              {/* Top glow line on hover */}
+              <div className="absolute inset-x-0 top-0 h-px rounded-t-2xl bg-gradient-to-r from-transparent via-current to-transparent opacity-0 group-hover:opacity-40 transition-opacity duration-300" />
+
+              {/* Icon */}
+              <div
+                className={`relative inline-flex items-center justify-center w-14 h-14 rounded-2xl ${feature.iconBg} text-accent mb-5 transition-all duration-300 group-hover:scale-110`}
+                style={{ boxShadow: `0 0 0 0 ${feature.iconGlow}` }}
+              >
+                {/* Rotating ring on hover */}
+                <motion.div
+                  className="absolute inset-0 rounded-2xl border border-current opacity-0 group-hover:opacity-30"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                />
+                {feature.icon}
+              </div>
+
+              <h3 className="text-xl font-bold text-text-primary mb-3 group-hover:text-gradient transition-all duration-300">
                 {t(feature.titleKey)}
               </h3>
               <p className="text-text-secondary leading-relaxed">
                 {t(feature.descKey)}
               </p>
-            </div>
+
+              {/* Bottom accent */}
+              <div className="absolute inset-x-0 bottom-0 h-px rounded-b-2xl bg-gradient-to-r from-transparent via-current to-transparent opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
+            </motion.div>
           ))}
         </div>
       </div>

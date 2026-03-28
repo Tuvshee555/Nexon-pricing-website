@@ -2,9 +2,13 @@
 
 import Link from "next/link";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { motion, useInView } from "framer-motion";
+import { useRef } from "react";
 
 export default function HeroSection() {
   const { lang, t } = useLanguage();
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true });
 
   const copy = lang === "mn"
     ? {
@@ -74,80 +78,181 @@ export default function HeroSection() {
         ],
       };
 
+  // Helper: produce fade-up animation props for any delay
+  const up = (delay: number) => ({
+    initial: { opacity: 0, y: 28 },
+    animate: isInView ? { opacity: 1, y: 0 } : { opacity: 0 as number, y: 28 as number },
+    transition: { duration: 0.7, delay },
+  });
+
   return (
-    <section className="relative overflow-hidden pt-24 pb-16 sm:pb-20">
-      <div className="absolute inset-0 bg-hero-glow" />
-      <div className="absolute top-0 left-1/2 h-[34rem] w-[34rem] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
-      <div className="absolute inset-x-0 top-16 mx-auto h-px max-w-6xl bg-gradient-to-r from-transparent via-border to-transparent" />
+    <section ref={ref} className="relative overflow-hidden pt-24 pb-16 sm:pb-20 grid-bg">
+      {/* Aurora orbs */}
+      <div
+        className="pointer-events-none absolute -top-40 left-1/4 h-[50rem] w-[50rem] rounded-full opacity-20"
+        style={{
+          background: "radial-gradient(ellipse, rgba(15,79,232,0.8) 0%, transparent 70%)",
+          animation: "aurora1 14s ease-in-out infinite",
+          filter: "blur(60px)",
+        }}
+      />
+      <div
+        className="pointer-events-none absolute top-20 right-0 h-[35rem] w-[35rem] rounded-full opacity-15"
+        style={{
+          background: "radial-gradient(ellipse, rgba(0,212,255,0.7) 0%, transparent 70%)",
+          animation: "aurora2 18s ease-in-out infinite",
+          filter: "blur(80px)",
+        }}
+      />
+      <div
+        className="pointer-events-none absolute bottom-0 left-0 h-[30rem] w-[30rem] rounded-full opacity-10"
+        style={{
+          background: "radial-gradient(ellipse, rgba(123,97,255,0.8) 0%, transparent 70%)",
+          animation: "aurora3 20s ease-in-out infinite",
+          filter: "blur(70px)",
+        }}
+      />
+
+      {/* Scan line */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div
+          className="absolute left-0 right-0 h-px"
+          style={{
+            background: "linear-gradient(90deg, transparent 0%, rgba(0,212,255,0.25) 50%, transparent 100%)",
+            animation: "scanLine 7s linear infinite",
+          }}
+        />
+      </div>
+
+      {/* Divider */}
+      <div className="absolute inset-x-0 top-16 mx-auto h-px max-w-6xl bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
+
+          {/* Left column */}
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
-              <span className="h-2 w-2 rounded-full bg-accent animate-pulse" />
-              {copy.badge}
-            </div>
+            {/* Badge */}
+            <motion.div {...up(0)}>
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary backdrop-blur-sm">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
+                </span>
+                {copy.badge}
+              </div>
+            </motion.div>
 
-            <h1 className="mt-6 max-w-3xl text-5xl font-black leading-tight text-text-primary sm:text-6xl lg:text-7xl">
+            {/* Headline */}
+            <motion.h1
+              {...up(0.12)}
+              className="mt-6 max-w-3xl text-5xl font-black leading-tight text-text-primary sm:text-6xl lg:text-7xl"
+            >
               {copy.title}
-            </h1>
+            </motion.h1>
 
-            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-text-secondary sm:text-xl">
+            {/* Subtitle */}
+            <motion.p
+              {...up(0.24)}
+              className="mt-6 max-w-2xl text-lg leading-relaxed text-text-secondary sm:text-xl"
+            >
               {copy.subtitle}
-            </p>
+            </motion.p>
 
-            <div className="mt-8 flex flex-col gap-4 sm:flex-row">
+            {/* CTA buttons */}
+            <motion.div {...up(0.36)} className="mt-8 flex flex-col gap-4 sm:flex-row">
               <Link
                 href="/register"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-8 py-4 text-lg font-bold text-white transition-all hover:scale-[1.02] hover:bg-primary/90 glow-primary"
+                className="btn-shimmer inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-8 py-4 text-lg font-bold text-white transition-all duration-300 hover:scale-[1.04] hover:bg-primary/90 glow-primary-lg"
               >
                 {t("hero_cta")}
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <motion.svg
+                  className="h-5 w-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  animate={{ x: [0, 4, 0] }}
+                  transition={{ duration: 1.8, repeat: Infinity }}
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14m-6-6 6 6-6 6" />
-                </svg>
+                </motion.svg>
               </Link>
               <button
                 onClick={() => document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" })}
-                className="inline-flex items-center justify-center rounded-xl border border-border px-8 py-4 text-lg font-medium text-text-secondary transition-all hover:border-primary/50 hover:text-text-primary"
+                className="inline-flex items-center justify-center rounded-xl border border-border px-8 py-4 text-lg font-medium text-text-secondary transition-all duration-300 hover:border-primary/50 hover:text-text-primary hover:bg-primary/5"
               >
                 {t("nav_pricing")}
               </button>
-            </div>
+            </motion.div>
 
-            <div className="mt-8 grid gap-3 sm:max-w-2xl sm:grid-cols-3">
-              {copy.primaryPoints.map((point) => (
-                <div key={point} className="rounded-2xl border border-border/80 bg-surface/70 px-4 py-4 text-sm text-text-secondary">
+            {/* Feature points */}
+            <motion.div {...up(0.48)} className="mt-8 grid gap-3 sm:max-w-2xl sm:grid-cols-3">
+              {copy.primaryPoints.map((point, i) => (
+                <motion.div
+                  key={point}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={isInView ? { opacity: 1, y: 0 } : {}}
+                  transition={{ delay: 0.6 + i * 0.1, duration: 0.6 }}
+                  className="rounded-2xl border border-border/80 bg-surface/70 px-4 py-4 text-sm text-text-secondary backdrop-blur-sm transition-all duration-300 hover:border-primary/30 hover:bg-primary/5"
+                >
                   <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-accent">
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
                   {point}
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
 
+            {/* Stats */}
             <div className="mt-10 grid max-w-xl grid-cols-3 gap-6">
-              {copy.bottomStats.map((stat) => (
-                <div key={stat.label}>
-                  <div className="text-3xl font-black text-gradient">{stat.value}</div>
+              {copy.bottomStats.map((stat, i) => (
+                <motion.div
+                  key={stat.label}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={isInView ? { opacity: 1, scale: 1 } : {}}
+                  transition={{ delay: 0.8 + i * 0.12, duration: 0.5 }}
+                >
+                  <div className="text-3xl font-black text-gradient-animated stat-glow">{stat.value}</div>
                   <div className="mt-1 text-sm text-text-secondary">{stat.label}</div>
-                </div>
+                </motion.div>
               ))}
             </div>
           </div>
 
-          <div className="relative">
+          {/* Right column — dashboard card */}
+          <motion.div
+            initial={{ opacity: 0, x: 40, y: 20 }}
+            animate={isInView ? { opacity: 1, x: 0, y: 0 } : {}}
+            transition={{ duration: 0.9, delay: 0.3 }}
+            className="relative"
+            style={{ animation: isInView ? "float 7s ease-in-out infinite" : "none" }}
+          >
             <div className="absolute inset-4 rounded-[2rem] bg-accent/10 blur-3xl" />
-            <div className="relative overflow-hidden rounded-[2rem] border border-border bg-surface/90 p-5 shadow-2xl shadow-background/40">
+            <div
+              className="absolute inset-0 rounded-[2rem] opacity-60"
+              style={{
+                background: "radial-gradient(ellipse at 50% 0%, rgba(15,79,232,0.2) 0%, transparent 60%)",
+                filter: "blur(20px)",
+              }}
+            />
+
+            <div className="relative overflow-hidden rounded-[2rem] border border-border bg-surface/90 p-5 shadow-2xl shadow-background/40 backdrop-blur-sm">
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+
               <div className="flex items-start justify-between gap-4 border-b border-border/80 pb-4">
                 <div>
                   <p className="text-sm font-semibold text-text-primary">{copy.visualTitle}</p>
                   <p className="mt-1 text-sm text-text-secondary">{copy.visualSubtitle}</p>
                 </div>
-                <div className="rounded-full border border-success/20 bg-success/10 px-3 py-1 text-xs font-semibold text-success">
+                <motion.div
+                  animate={{ scale: [1, 1.05, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="rounded-full border border-success/20 bg-success/10 px-3 py-1 text-xs font-semibold text-success"
+                >
                   Live
-                </div>
+                </motion.div>
               </div>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -155,15 +260,21 @@ export default function HeroSection() {
                   { label: copy.autoResolved, value: "76%" },
                   { label: copy.responseTime, value: "4 sec" },
                   { label: copy.escalated, value: "8" },
-                ].map((item) => (
-                  <div key={item.label} className="rounded-2xl border border-border/80 bg-background/70 p-4">
+                ].map((item, i) => (
+                  <motion.div
+                    key={item.label}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={isInView ? { opacity: 1, y: 0 } : {}}
+                    transition={{ delay: 0.7 + i * 0.1, duration: 0.5 }}
+                    className="rounded-2xl border border-border/80 bg-background/70 p-4 transition-all duration-300 hover:border-primary/30"
+                  >
                     <div className="text-xs uppercase tracking-[0.18em] text-muted">{item.label}</div>
                     <div className="mt-3 text-2xl font-black text-text-primary">{item.value}</div>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
 
-              <div className="mt-5 rounded-[1.5rem] border border-border/80 bg-background/70 p-4">
+              <div className="mt-5 rounded-[1.5rem] border border-border/80 bg-background/70 p-4 relative overflow-hidden">
                 <div className="mb-4 flex items-center justify-between">
                   <p className="text-sm font-semibold text-text-primary">{copy.liveLabel}</p>
                   <div className="flex items-center gap-2 text-xs text-text-secondary">
@@ -179,50 +290,63 @@ export default function HeroSection() {
                 </div>
 
                 <div className="space-y-3">
-                  <MessageBubble
-                    role={copy.customer}
-                    tone="border-border bg-surface"
-                    message={copy.customerMessage}
-                  />
-                  <MessageBubble
-                    role={copy.bot}
-                    tone="border-primary/30 bg-primary/10"
-                    message={copy.botMessage}
-                  />
-                  <MessageBubble
-                    role={copy.team}
-                    tone="border-accent/30 bg-accent/10"
-                    message={copy.teamMessage}
-                  />
+                  {[
+                    { role: copy.customer, tone: "border-border bg-surface", message: copy.customerMessage, delay: 0.9 },
+                    { role: copy.bot, tone: "border-primary/30 bg-primary/10", message: copy.botMessage, delay: 1.05 },
+                    { role: copy.team, tone: "border-accent/30 bg-accent/10", message: copy.teamMessage, delay: 1.2 },
+                  ].map((bubble) => (
+                    <motion.div
+                      key={bubble.role}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={isInView ? { opacity: 1, x: 0 } : {}}
+                      transition={{ delay: bubble.delay, duration: 0.5 }}
+                    >
+                      <MessageBubble role={bubble.role} tone={bubble.tone} message={bubble.message} />
+                    </motion.div>
+                  ))}
                 </div>
               </div>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                {copy.liveItems.map((item) => (
-                  <div key={item.label} className="rounded-2xl border border-border/80 bg-background/70 p-4">
+                {copy.liveItems.map((item, i) => (
+                  <motion.div
+                    key={item.label}
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={isInView ? { opacity: 1, scale: 1 } : {}}
+                    transition={{ delay: 1.1 + i * 0.1, duration: 0.4 }}
+                    className="rounded-2xl border border-border/80 bg-background/70 p-4 transition-all duration-300 hover:border-accent/30"
+                  >
                     <div className="text-2xl font-black text-gradient">{item.value}</div>
                     <div className="mt-2 text-sm text-text-secondary">{item.label}</div>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
+
+              <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-accent/20 to-transparent" />
             </div>
-          </div>
+          </motion.div>
         </div>
 
-        <div className="mt-12 flex flex-wrap items-center justify-center gap-8 border-t border-border/70 pt-8 text-sm text-text-secondary">
-          <div className="flex items-center gap-2">
+        {/* Platform bar */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ delay: 1.3, duration: 0.6 }}
+          className="mt-12 flex flex-wrap items-center justify-center gap-8 border-t border-border/70 pt-8 text-sm text-text-secondary"
+        >
+          <div className="flex items-center gap-2 transition-colors hover:text-text-primary">
             <PlatformIcon type="instagram" />
             Instagram DM
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 transition-colors hover:text-text-primary">
             <PlatformIcon type="messenger" />
             Facebook Messenger
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 transition-colors hover:text-text-primary">
             <PlatformIcon type="dashboard" />
             Admin dashboard
           </div>
-        </div>
+        </motion.div>
       </div>
     </section>
   );
@@ -238,7 +362,7 @@ function MessageBubble({
   message: string;
 }) {
   return (
-    <div className={`rounded-2xl border p-4 ${tone}`}>
+    <div className={`rounded-2xl border p-4 transition-all duration-300 ${tone}`}>
       <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted">
         {role}
       </div>

@@ -1,6 +1,8 @@
 "use client";
 
 import { useLanguage } from "@/contexts/LanguageContext";
+import { motion, useInView } from "framer-motion";
+import { useRef } from "react";
 
 const operations = {
   mn: {
@@ -110,69 +112,138 @@ const operations = {
 export default function OperationsSection() {
   const { lang } = useLanguage();
   const copy = operations[lang];
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-60px" });
 
   return (
-    <section className="relative py-24 px-4 sm:px-6 lg:px-8">
+    <section ref={ref} className="relative py-24 px-4 sm:px-6 lg:px-8 overflow-hidden">
+      {/* Background aurora */}
+      <div
+        className="pointer-events-none absolute right-0 top-1/4 h-[40rem] w-[40rem] rounded-full opacity-10"
+        style={{
+          background: "radial-gradient(ellipse, rgba(123,97,255,0.8) 0%, transparent 70%)",
+          filter: "blur(80px)",
+          animation: "aurora3 16s ease-in-out infinite",
+        }}
+      />
+
       <div className="absolute inset-x-0 top-0 mx-auto h-px max-w-6xl bg-gradient-to-r from-transparent via-border to-transparent" />
 
       <div className="max-w-7xl mx-auto">
         <div className="grid gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
+
+          {/* Left — text + cards */}
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-accent">
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={isInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.6 }}
+              className="text-sm font-semibold uppercase tracking-[0.22em] text-accent"
+            >
               {copy.eyebrow}
-            </p>
-            <h2 className="mt-4 text-4xl font-black text-text-primary sm:text-5xl">
+            </motion.p>
+            <motion.h2
+              initial={{ opacity: 0, y: 24 }}
+              animate={isInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="mt-4 text-4xl font-black text-text-primary sm:text-5xl"
+            >
               {copy.title}
-            </h2>
-            <p className="mt-5 max-w-2xl text-lg leading-relaxed text-text-secondary">
+            </motion.h2>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={isInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="mt-5 max-w-2xl text-lg leading-relaxed text-text-secondary"
+            >
               {copy.subtitle}
-            </p>
+            </motion.p>
 
             <div className="mt-8 grid gap-4">
               {copy.cards.map((card, index) => (
-                <div
+                <motion.div
                   key={card.title}
-                  className="rounded-3xl border border-border bg-surface/80 p-5 transition-transform duration-300 hover:-translate-y-1"
+                  initial={{ opacity: 0, x: -30 }}
+                  animate={isInView ? { opacity: 1, x: 0 } : {}}
+                  transition={{ duration: 0.6, delay: 0.25 + index * 0.1 }}
+                  className="group rounded-3xl border border-border bg-surface/80 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:bg-primary/5 hover:shadow-lg"
                 >
                   <div className="flex items-start gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-accent">
+                    <motion.div
+                      whileHover={{ rotate: 8, scale: 1.1 }}
+                      transition={{ type: "spring", stiffness: 400 }}
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-accent transition-all duration-300 group-hover:border-primary/40 group-hover:bg-primary/15"
+                    >
                       <span className="text-sm font-black">{String(index + 1).padStart(2, "0")}</span>
-                    </div>
+                    </motion.div>
                     <div>
-                      <h3 className="text-lg font-bold text-text-primary">{card.title}</h3>
+                      <h3 className="text-lg font-bold text-text-primary group-hover:text-gradient transition-all duration-300">
+                        {card.title}
+                      </h3>
                       <p className="mt-2 text-sm leading-relaxed text-text-secondary">
                         {card.description}
                       </p>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           </div>
 
-          <div className="relative">
+          {/* Right — workflow card */}
+          <motion.div
+            initial={{ opacity: 0, x: 40 }}
+            animate={isInView ? { opacity: 1, x: 0 } : {}}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="relative"
+          >
             <div className="absolute inset-0 rounded-[2rem] bg-primary/10 blur-3xl" />
-            <div className="relative overflow-hidden rounded-[2rem] border border-border bg-surface/90 p-6">
+            <div className="relative overflow-hidden rounded-[2rem] border border-border bg-surface/90 p-6 backdrop-blur-sm">
+              {/* Top glow line */}
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/40 to-transparent" />
+
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-xl font-bold text-text-primary">{copy.flowTitle}</p>
                   <p className="mt-2 text-sm text-text-secondary">{copy.flowSubtitle}</p>
                 </div>
-                <div className="rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
+                <motion.div
+                  animate={{ borderColor: ["rgba(0,212,255,0.2)", "rgba(0,212,255,0.6)", "rgba(0,212,255,0.2)"] }}
+                  transition={{ duration: 2.5, repeat: Infinity }}
+                  className="rounded-full border px-3 py-1 text-xs font-semibold text-accent bg-accent/10"
+                >
                   Workflow
-                </div>
+                </motion.div>
               </div>
 
               <div className="mt-8 space-y-5">
                 {copy.stages.map((stage, index) => (
-                  <div key={stage.step} className="relative rounded-3xl border border-border/80 bg-background/70 p-5">
+                  <motion.div
+                    key={stage.step}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={isInView ? { opacity: 1, y: 0 } : {}}
+                    transition={{ duration: 0.5, delay: 0.5 + index * 0.15 }}
+                    className="relative rounded-3xl border border-border/80 bg-background/70 p-5 transition-all duration-300 hover:border-primary/30 hover:bg-primary/5"
+                  >
                     {index < copy.stages.length - 1 && (
-                      <div className="absolute left-8 top-full h-5 w-px bg-gradient-to-b from-primary/60 to-accent/20" />
+                      <motion.div
+                        initial={{ height: 0 }}
+                        animate={isInView ? { height: 20 } : {}}
+                        transition={{ duration: 0.4, delay: 0.8 + index * 0.15 }}
+                        className="absolute left-8 top-full w-px overflow-hidden"
+                        style={{ background: "linear-gradient(to bottom, rgba(15,79,232,0.6), rgba(0,212,255,0.2))" }}
+                      />
                     )}
                     <div className="flex items-start gap-4">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-card-gradient text-sm font-black text-text-primary">
+                      <motion.div
+                        initial={{ scale: 0, rotate: -10 }}
+                        animate={isInView ? { scale: 1, rotate: 0 } : {}}
+                        transition={{ type: "spring", stiffness: 300, delay: 0.5 + index * 0.15 }}
+                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-card-gradient text-sm font-black text-text-primary"
+                        style={{ boxShadow: "0 0 20px rgba(15,79,232,0.2)" }}
+                      >
                         {stage.step}
-                      </div>
+                      </motion.div>
                       <div className="flex-1">
                         <div className="flex flex-wrap items-center gap-3">
                           <h3 className="text-lg font-bold text-text-primary">{stage.title}</h3>
@@ -185,20 +256,28 @@ export default function OperationsSection() {
                         </p>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
 
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                {copy.sideStats.map((stat) => (
-                  <div key={stat.label} className="rounded-2xl border border-border/80 bg-background/70 p-4">
+                {copy.sideStats.map((stat, i) => (
+                  <motion.div
+                    key={stat.label}
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={isInView ? { opacity: 1, scale: 1 } : {}}
+                    transition={{ duration: 0.4, delay: 1.0 + i * 0.1 }}
+                    className="rounded-2xl border border-border/80 bg-background/70 p-4 transition-all duration-300 hover:border-accent/30"
+                  >
                     <div className="text-xs uppercase tracking-[0.18em] text-muted">{stat.label}</div>
-                    <div className="mt-3 text-lg font-black text-text-primary">{stat.value}</div>
-                  </div>
+                    <div className="mt-3 text-lg font-black text-gradient">{stat.value}</div>
+                  </motion.div>
                 ))}
               </div>
+
+              <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
     </section>
