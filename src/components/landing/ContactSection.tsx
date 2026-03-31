@@ -99,7 +99,7 @@ export default function ContactSection() {
       value: "@nexon_digital_nova",
     },
     {
-      href: "https://www.facebook.com/profile.php?id=61582430194143",
+      href: "https://www.facebook.com/profile.php?id=61575512910743",
       icon: (
         <svg
           className="w-5 h-5 text-blue-500"
