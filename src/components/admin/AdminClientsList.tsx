@@ -21,17 +21,20 @@ export default function AdminClientsList({ clients }: { clients: Client[] }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<string>("all");
 
-  const filtered = clients.filter((c) => {
+  const filtered = clients.filter((client) => {
     const matchSearch =
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.email?.toLowerCase().includes(search.toLowerCase());
+      client.name.toLowerCase().includes(search.toLowerCase()) ||
+      client.email?.toLowerCase().includes(search.toLowerCase());
     const isLow =
-      c.subscription_price > 0 && (c.virtual_balance || 0) < c.subscription_price;
-    const noBiz = !c.businessId;
+      client.subscription_price > 0 &&
+      (client.virtual_balance || 0) < client.subscription_price;
+    const noBusiness = !client.businessId;
+
     if (filter === "low_balance") return matchSearch && isLow;
-    if (filter === "no_business") return matchSearch && noBiz;
+    if (filter === "no_business") return matchSearch && noBusiness;
     if (filter === "all") return matchSearch;
-    return matchSearch && c.status === filter;
+
+    return matchSearch && client.status === filter;
   });
 
   const statusBadge = (status: string) => {
@@ -47,8 +50,11 @@ export default function AdminClientsList({ clients }: { clients: Client[] }) {
       cancelled: "Цуцлагдсан",
       no_business: "Бизнес байхгүй",
     };
+
     return (
-      <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${map[status] || ""}`}>
+      <span
+        className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${map[status] || ""}`}
+      >
         {label[status] || status}
       </span>
     );
@@ -57,19 +63,28 @@ export default function AdminClientsList({ clients }: { clients: Client[] }) {
   const getPlanLabel = (plan: Client["plans"]) => {
     if (!plan) return "—";
     if (plan.plan_type === "credit") return "Мессеж пакет";
-    const mp = MONTHLY_PLANS.find((p) => p.tier === plan.monthly_tier);
-    return mp ? mp.nameMn : "Сарын";
+
+    const monthlyPlan = MONTHLY_PLANS.find((item) => item.tier === plan.monthly_tier);
+    return monthlyPlan ? monthlyPlan.nameMn : "Сарын";
   };
 
-  const isLowBalance = (c: Client) =>
-    c.subscription_price > 0 && (c.virtual_balance || 0) < c.subscription_price;
+  const isLowBalance = (client: Client) =>
+    client.subscription_price > 0 &&
+    (client.virtual_balance || 0) < client.subscription_price;
+
+  const getDisplayedBalance = (client: Client) => {
+    if (!client.businessId) {
+      return "—";
+    }
+
+    return `${(client.virtual_balance || 0).toLocaleString()}₮`;
+  };
 
   const lowCount = clients.filter(isLowBalance).length;
-  const noBizCount = clients.filter((c) => !c.businessId).length;
+  const noBusinessCount = clients.filter((client) => !client.businessId).length;
 
   return (
     <div className="card overflow-hidden">
-      {/* Filters */}
       <div className="p-4 border-b border-border flex flex-col sm:flex-row gap-3">
         <input
           type="text"
@@ -87,8 +102,8 @@ export default function AdminClientsList({ clients }: { clients: Client[] }) {
           <option value="active">Идэвхтэй</option>
           <option value="paused">Түр зогссон</option>
           <option value="cancelled">Цуцлагдсан</option>
-          {noBizCount > 0 && (
-            <option value="no_business">Бизнес байхгүй ({noBizCount})</option>
+          {noBusinessCount > 0 && (
+            <option value="no_business">Бизнес байхгүй ({noBusinessCount})</option>
           )}
           {lowCount > 0 && (
             <option value="low_balance">⚠️ Үлдэгдэл бага ({lowCount})</option>
@@ -96,7 +111,6 @@ export default function AdminClientsList({ clients }: { clients: Client[] }) {
         </select>
       </div>
 
-      {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -105,7 +119,7 @@ export default function AdminClientsList({ clients }: { clients: Client[] }) {
               <th className="text-left text-muted font-medium px-6 py-3">И-мэйл</th>
               <th className="text-left text-muted font-medium px-6 py-3">Төлөвлөгөө</th>
               <th className="text-left text-muted font-medium px-6 py-3">Статус</th>
-              <th className="text-right text-muted font-medium px-6 py-3">Үлдэгдэл</th>
+              <th className="text-right text-muted font-medium px-6 py-3">Үлдэгдэл (₮)</th>
               <th className="text-right text-muted font-medium px-6 py-3">Мессеж</th>
               <th className="text-right text-muted font-medium px-6 py-3">Үйлдэл</th>
             </tr>
@@ -128,9 +142,7 @@ export default function AdminClientsList({ clients }: { clients: Client[] }) {
                   <td className="px-6 py-4 font-medium text-text-primary">
                     <div className="flex items-center gap-2">
                       {client.name || <span className="text-muted italic">Тохируулаагүй</span>}
-                      {isLowBalance(client) && (
-                        <span className="text-warning text-xs">⚠️</span>
-                      )}
+                      {isLowBalance(client) && <span className="text-warning text-xs">⚠️</span>}
                     </div>
                   </td>
                   <td className="px-6 py-4 text-text-secondary">{client.email || "—"}</td>
@@ -139,16 +151,20 @@ export default function AdminClientsList({ clients }: { clients: Client[] }) {
                   </td>
                   <td className="px-6 py-4">{statusBadge(client.status)}</td>
                   <td className="px-6 py-4 text-right">
-                    {client.businessId && client.subscription_price > 0 ? (
-                      <span className={`font-medium ${isLowBalance(client) ? "text-warning" : "text-success"}`}>
-                        {(client.virtual_balance || 0).toLocaleString()}₮
+                    {client.businessId ? (
+                      <span
+                        className={`font-medium ${
+                          isLowBalance(client) ? "text-warning" : "text-success"
+                        }`}
+                      >
+                        {getDisplayedBalance(client)}
                       </span>
                     ) : (
                       <span className="text-muted">—</span>
                     )}
                   </td>
                   <td className="px-6 py-4 text-right text-accent font-medium">
-                    {client.businessId ? (client.credits?.balance ?? "—") : "—"}
+                    {client.businessId ? client.credits?.balance ?? 0 : "—"}
                   </td>
                   <td className="px-6 py-4 text-right">
                     {client.businessId ? (

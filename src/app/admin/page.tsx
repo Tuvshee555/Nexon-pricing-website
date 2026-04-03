@@ -12,15 +12,14 @@ const TX_TYPE_LABEL: Record<string, string> = {
 export default async function AdminOverviewPage() {
   const adminClient = await createAdminClient();
 
-  const startOfMonth = new Date();
-  startOfMonth.setDate(1);
-  startOfMonth.setHours(0, 0, 0, 0);
+  const revenueWindowStart = new Date();
+  revenueWindowStart.setDate(revenueWindowStart.getDate() - 30);
+  revenueWindowStart.setHours(0, 0, 0, 0);
 
-  // Parallel fetch all stats — ALL using adminClient (service role)
   const [
     { count: totalClients },
     { count: activeClients },
-    { data: monthlyTransactions },
+    { data: recentRevenueTransactions },
     { data: totalMessagesData },
     { count: activeSubscriptions },
     { data: recentTransactions },
@@ -41,7 +40,7 @@ export default async function AdminOverviewPage() {
       .from("transactions")
       .select("amount")
       .eq("status", "paid")
-      .gte("paid_at", startOfMonth.toISOString()),
+      .gte("paid_at", revenueWindowStart.toISOString()),
 
     adminClient.from("message_logs").select("message_count"),
 
@@ -70,14 +69,15 @@ export default async function AdminOverviewPage() {
       .neq("status", "cancelled"),
   ]);
 
-  const monthlyRevenue =
-    monthlyTransactions?.reduce((sum, t) => sum + t.amount, 0) || 0;
+  const revenueLast30Days =
+    recentRevenueTransactions?.reduce((sum, tx) => sum + tx.amount, 0) || 0;
   const totalMessages =
-    totalMessagesData?.reduce((sum, l) => sum + l.message_count, 0) || 0;
+    totalMessagesData?.reduce((sum, log) => sum + log.message_count, 0) || 0;
 
-  // Filter low balance
   const lowBalance = (allBillingClients || []).filter(
-    (b) => b.subscription_price > 0 && (b.virtual_balance || 0) < b.subscription_price
+    (business) =>
+      business.subscription_price > 0 &&
+      (business.virtual_balance || 0) < business.subscription_price
   );
 
   const stats = [
@@ -96,8 +96,8 @@ export default async function AdminOverviewPage() {
       bg: "bg-success/10 border-success/20",
     },
     {
-      label: "Энэ сарын орлого",
-      value: `${monthlyRevenue.toLocaleString()}₮`,
+      label: "Сүүлийн 30 хоногийн орлого",
+      value: `${revenueLast30Days.toLocaleString()}₮`,
       icon: "💰",
       color: "text-accent",
       bg: "bg-accent/10 border-accent/20",
@@ -133,7 +133,6 @@ export default async function AdminOverviewPage() {
         </div>
       </div>
 
-      {/* Low balance alerts */}
       {lowBalance.length > 0 && (
         <div className="card p-4 border-warning/40">
           <div className="flex items-center gap-2 mb-3">
@@ -143,16 +142,20 @@ export default async function AdminOverviewPage() {
             </span>
           </div>
           <div className="space-y-2">
-            {lowBalance.map((b) => (
-              <div key={b.id} className="flex items-center justify-between bg-warning/5 rounded-lg px-3 py-2">
+            {lowBalance.map((business) => (
+              <div
+                key={business.id}
+                className="flex items-center justify-between bg-warning/5 rounded-lg px-3 py-2"
+              >
                 <div>
-                  <span className="text-text-primary text-sm font-medium">{b.name}</span>
+                  <span className="text-text-primary text-sm font-medium">{business.name}</span>
                   <span className="text-text-secondary text-xs ml-2">
-                    {(b.virtual_balance || 0).toLocaleString()}₮ үлдсэн / {b.subscription_price.toLocaleString()}₮ захиалга
+                    {(business.virtual_balance || 0).toLocaleString()}₮ үлдсэн /{" "}
+                    {business.subscription_price.toLocaleString()}₮ захиалга
                   </span>
                 </div>
                 <Link
-                  href={`/admin/clients/${b.id}`}
+                  href={`/admin/clients/${business.id}`}
                   className="text-xs text-warning border border-warning/30 px-2 py-1 rounded hover:bg-warning/10 transition-colors"
                 >
                   Харах
@@ -163,7 +166,6 @@ export default async function AdminOverviewPage() {
         </div>
       )}
 
-      {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat) => (
           <div key={stat.label} className={`card p-6 border ${stat.bg}`}>
@@ -175,7 +177,6 @@ export default async function AdminOverviewPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent payments */}
         <div className="lg:col-span-2 card overflow-hidden">
           <div className="p-5 border-b border-border flex items-center justify-between">
             <h2 className="font-bold text-text-primary">Сүүлийн төлбөрүүд</h2>
@@ -231,7 +232,6 @@ export default async function AdminOverviewPage() {
           )}
         </div>
 
-        {/* Recent registrations */}
         <div className="card overflow-hidden">
           <div className="p-5 border-b border-border">
             <h2 className="font-bold text-text-primary">Шинэ клиентүүд</h2>
@@ -243,23 +243,25 @@ export default async function AdminOverviewPage() {
           ) : (
             <div className="divide-y divide-border">
               {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              {(recentClients as any[]).map((c) => (
+              {(recentClients as any[]).map((client) => (
                 <Link
-                  key={c.id}
-                  href={`/admin/clients/${c.id}`}
+                  key={client.id}
+                  href={`/admin/clients/${client.id}`}
                   className="flex items-center gap-3 px-5 py-3 hover:bg-surface-2/50 transition-colors"
                 >
                   <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm shrink-0">
-                    {c.name?.charAt(0)?.toUpperCase() || "?"}
+                    {client.name?.charAt(0)?.toUpperCase() || "?"}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-text-primary text-sm font-medium truncate">{c.name || "Тохируулаагүй"}</p>
+                    <p className="text-text-primary text-sm font-medium truncate">
+                      {client.name || "Тохируулаагүй"}
+                    </p>
                     <p className="text-muted text-xs truncate">
-                      {(c.users as { email: string } | null)?.email || "—"}
+                      {(client.users as { email: string } | null)?.email || "—"}
                     </p>
                   </div>
                   <p className="text-muted text-xs ml-auto shrink-0">
-                    {new Date(c.created_at).toLocaleDateString("mn-MN")}
+                    {new Date(client.created_at).toLocaleDateString("mn-MN")}
                   </p>
                 </Link>
               ))}
