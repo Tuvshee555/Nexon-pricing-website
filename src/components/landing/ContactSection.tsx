@@ -1,44 +1,68 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { motion, useInView, AnimatePresence } from "framer-motion";
+import type {
+  ContactApiResponse,
+  ContactErrorCode,
+  ContactField,
+  ContactFormPayload,
+} from "@/lib/contact";
+import {
+  CONTACT_COOLDOWN_SECONDS,
+  CONTACT_ERROR_TO_FIELD,
+  CONTACT_MIN_MESSAGE_LENGTH,
+  CONTACT_MIN_NAME_VISIBLE_LENGTH,
+  CONTACT_SUCCESS_RESET_MS,
+  formatMongolianPhone,
+  validateContactField,
+  validateContactPayload,
+} from "@/lib/contact";
+
+type SubmitErrorCode = ContactErrorCode | "NETWORK_ERROR";
+
+const emptyForm: ContactFormPayload = {
+  name: "",
+  phone: "",
+  email: "",
+  message: "",
+  website: "",
+};
 
 export default function ContactSection() {
   const { t } = useLanguage();
-  const [form, setForm] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    message: "",
-  });
-  const [status, setStatus] = useState<
-    "idle" | "sending" | "success" | "error"
-  >("idle");
+  const [form, setForm] = useState<ContactFormPayload>(emptyForm);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<ContactField, ContactErrorCode>>>({});
+  const [submitError, setSubmitError] = useState<SubmitErrorCode | null>(null);
+  const [status, setStatus] = useState<"idle" | "sending" | "success">("idle");
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-60px" });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setStatus("sending");
-
-    try {
-      const res = await fetch("/api/contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-
-      if (res.ok) {
-        setStatus("success");
-        setForm({ name: "", phone: "", email: "", message: "" });
-      } else {
-        setStatus("error");
-      }
-    } catch {
-      setStatus("error");
+  useEffect(() => {
+    if (status !== "success") {
+      return;
     }
-  };
+
+    const timer = window.setTimeout(() => {
+      setStatus("idle");
+    }, CONTACT_SUCCESS_RESET_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [status]);
+
+  useEffect(() => {
+    if (cooldownRemaining <= 0) {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      setCooldownRemaining((current) => (current <= 1 ? 0 : current - 1));
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [cooldownRemaining]);
 
   const contactLinks = [
     {
@@ -115,13 +139,124 @@ export default function ContactSection() {
     },
   ];
 
+  const formatText = (template: string, replacements: Record<string, string | number>) => {
+    return Object.entries(replacements).reduce(
+      (text, [key, value]) => text.replace(`{${key}}`, String(value)),
+      template
+    );
+  };
+
+  const getErrorMessage = (errorCode: SubmitErrorCode | null) => {
+    switch (errorCode) {
+      case "MISSING_NAME":
+        return t("contact_error_name_required");
+      case "NAME_TOO_SHORT":
+        return formatText(t("contact_error_name_short"), {
+          min: CONTACT_MIN_NAME_VISIBLE_LENGTH,
+        });
+      case "MISSING_EMAIL":
+        return t("contact_error_email_required");
+      case "INVALID_EMAIL":
+        return t("contact_error_email_invalid");
+      case "INVALID_PHONE":
+        return t("contact_error_phone_invalid");
+      case "MISSING_MESSAGE":
+        return t("contact_error_message_required");
+      case "MESSAGE_TOO_SHORT":
+        return formatText(t("contact_error_message_short"), {
+          min: CONTACT_MIN_MESSAGE_LENGTH,
+        });
+      case "NETWORK_ERROR":
+        return t("contact_error_network");
+      case "SEND_FAILED":
+      default:
+        return t("contact_error_send_failed");
+    }
+  };
+
+  const updateField = (field: ContactField | "website", value: string) => {
+    const nextForm = { ...form, [field]: value };
+    setForm(nextForm);
+    setSubmitError(null);
+
+    if (field !== "website" && fieldErrors[field]) {
+      const nextError = validateContactField(field, nextForm);
+      setFieldErrors((prev) => {
+        const nextErrors = { ...prev };
+        if (nextError) {
+          nextErrors[field] = nextError;
+        } else {
+          delete nextErrors[field];
+        }
+        return nextErrors;
+      });
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (status === "sending" || cooldownRemaining > 0) {
+      return;
+    }
+
+    setSubmitError(null);
+
+    const validation = validateContactPayload(form);
+    if (validation.firstErrorCode) {
+      setFieldErrors(validation.fieldErrors);
+      return;
+    }
+
+    setFieldErrors({});
+    setStatus("sending");
+
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(validation.sanitized),
+      });
+
+      const data = (await res.json().catch(() => null)) as ContactApiResponse | null;
+
+      if (!res.ok || !data?.success) {
+        const errorCode = data?.errorCode || "SEND_FAILED";
+        const field = CONTACT_ERROR_TO_FIELD[errorCode];
+
+        if (field) {
+          setFieldErrors({ [field]: errorCode });
+        } else {
+          setSubmitError(errorCode);
+        }
+
+        setStatus("idle");
+        return;
+      }
+
+      setForm({ ...emptyForm });
+      setFieldErrors({});
+      setSubmitError(null);
+      setCooldownRemaining(CONTACT_COOLDOWN_SECONDS);
+      setStatus("success");
+    } catch {
+      setSubmitError("NETWORK_ERROR");
+      setStatus("idle");
+    }
+  };
+
+  const isSubmitDisabled = status === "sending" || cooldownRemaining > 0;
+  const cooldownMessage =
+    cooldownRemaining > 0
+      ? formatText(t("contact_cooldown"), { seconds: cooldownRemaining })
+      : null;
+
   return (
     <section
       id="contact"
       ref={ref}
       className="relative py-24 px-4 sm:px-6 lg:px-8 overflow-hidden"
     >
-      {/* Background */}
       <div className="absolute inset-0 bg-surface/50" />
       <div
         className="pointer-events-none absolute left-1/2 bottom-0 h-[30rem] w-[60rem] -translate-x-1/2 rounded-full opacity-10"
@@ -147,7 +282,6 @@ export default function ContactSection() {
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Contact info */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             animate={isInView ? { opacity: 1, x: 0 } : {}}
@@ -157,7 +291,7 @@ export default function ContactSection() {
             <div className="relative overflow-hidden rounded-2xl border border-border bg-surface/80 p-6 backdrop-blur-sm">
               <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
               <h3 className="text-lg font-bold text-text-primary mb-5">
-                Холбоо барих мэдээлэл
+                {t("contact_info_title")}
               </h3>
               <div className="space-y-3">
                 {contactLinks.map((link, i) => (
@@ -191,7 +325,6 @@ export default function ContactSection() {
             </div>
           </motion.div>
 
-          {/* Contact form */}
           <motion.div
             initial={{ opacity: 0, x: 30 }}
             animate={isInView ? { opacity: 1, x: 0 } : {}}
@@ -234,23 +367,39 @@ export default function ContactSection() {
                     {t("contact_success")}
                   </h3>
                   <p className="text-text-secondary">
-                    Бид удахгүй холбоо барина.
+                    {t("contact_success_subtitle")}
                   </p>
                   <button
                     onClick={() => setStatus("idle")}
                     className="mt-6 text-primary hover:text-primary/80 text-sm font-medium transition-colors"
                   >
-                    Дахин илгээх
+                    {t("contact_send_again")}
                   </button>
                 </motion.div>
               ) : (
                 <motion.form
                   key="form"
                   onSubmit={handleSubmit}
+                  noValidate
                   className="space-y-4"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                 >
+                  <div
+                    className="absolute left-[-9999px] top-auto h-px w-px overflow-hidden"
+                    aria-hidden="true"
+                  >
+                    <label htmlFor="contact-website">Website</label>
+                    <input
+                      id="contact-website"
+                      type="text"
+                      tabIndex={-1}
+                      autoComplete="off"
+                      value={form.website || ""}
+                      onChange={(e) => updateField("website", e.target.value)}
+                    />
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-text-secondary mb-1.5">
@@ -259,13 +408,19 @@ export default function ContactSection() {
                       <input
                         type="text"
                         value={form.name}
-                        onChange={(e) =>
-                          setForm({ ...form, name: e.target.value })
-                        }
-                        required
-                        className="w-full bg-surface-2 border border-border rounded-lg px-4 py-2.5 text-text-primary placeholder-muted focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(15,79,232,0.15)] transition-all text-sm"
-                        placeholder="Таны нэр"
+                        onChange={(e) => updateField("name", e.target.value)}
+                        autoComplete="name"
+                        aria-invalid={Boolean(fieldErrors.name)}
+                        className={`w-full bg-surface-2 border rounded-lg px-4 py-2.5 text-text-primary placeholder-muted focus:outline-none focus:shadow-[0_0_0_3px_rgba(15,79,232,0.15)] transition-all text-sm ${
+                          fieldErrors.name ? "border-danger/50" : "border-border focus:border-primary"
+                        }`}
+                        placeholder={t("contact_placeholder_name")}
                       />
+                      {fieldErrors.name && (
+                        <p className="mt-2 text-sm text-danger">
+                          {getErrorMessage(fieldErrors.name)}
+                        </p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-text-secondary mb-1.5">
@@ -274,12 +429,20 @@ export default function ContactSection() {
                       <input
                         type="tel"
                         value={form.phone}
-                        onChange={(e) =>
-                          setForm({ ...form, phone: e.target.value })
-                        }
-                        className="w-full bg-surface-2 border border-border rounded-lg px-4 py-2.5 text-text-primary placeholder-muted focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(15,79,232,0.15)] transition-all text-sm"
-                        placeholder="+976 ..."
+                        onChange={(e) => updateField("phone", formatMongolianPhone(e.target.value))}
+                        autoComplete="tel"
+                        inputMode="tel"
+                        aria-invalid={Boolean(fieldErrors.phone)}
+                        className={`w-full bg-surface-2 border rounded-lg px-4 py-2.5 text-text-primary placeholder-muted focus:outline-none focus:shadow-[0_0_0_3px_rgba(15,79,232,0.15)] transition-all text-sm ${
+                          fieldErrors.phone ? "border-danger/50" : "border-border focus:border-primary"
+                        }`}
+                        placeholder={t("contact_placeholder_phone")}
                       />
+                      {fieldErrors.phone && (
+                        <p className="mt-2 text-sm text-danger">
+                          {getErrorMessage(fieldErrors.phone)}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -290,13 +453,19 @@ export default function ContactSection() {
                     <input
                       type="email"
                       value={form.email}
-                      onChange={(e) =>
-                        setForm({ ...form, email: e.target.value })
-                      }
-                      required
-                      className="w-full bg-surface-2 border border-border rounded-lg px-4 py-2.5 text-text-primary placeholder-muted focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(15,79,232,0.15)] transition-all text-sm"
-                      placeholder="you@example.com"
+                      onChange={(e) => updateField("email", e.target.value)}
+                      autoComplete="email"
+                      aria-invalid={Boolean(fieldErrors.email)}
+                      className={`w-full bg-surface-2 border rounded-lg px-4 py-2.5 text-text-primary placeholder-muted focus:outline-none focus:shadow-[0_0_0_3px_rgba(15,79,232,0.15)] transition-all text-sm ${
+                        fieldErrors.email ? "border-danger/50" : "border-border focus:border-primary"
+                      }`}
+                      placeholder={t("contact_placeholder_email")}
                     />
+                    {fieldErrors.email && (
+                      <p className="mt-2 text-sm text-danger">
+                        {getErrorMessage(fieldErrors.email)}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -305,32 +474,41 @@ export default function ContactSection() {
                     </label>
                     <textarea
                       value={form.message}
-                      onChange={(e) =>
-                        setForm({ ...form, message: e.target.value })
-                      }
-                      required
+                      onChange={(e) => updateField("message", e.target.value)}
                       rows={5}
-                      className="w-full bg-surface-2 border border-border rounded-lg px-4 py-2.5 text-text-primary placeholder-muted focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(15,79,232,0.15)] transition-all text-sm resize-none"
-                      placeholder="Таны мессеж..."
+                      aria-invalid={Boolean(fieldErrors.message)}
+                      className={`w-full bg-surface-2 border rounded-lg px-4 py-2.5 text-text-primary placeholder-muted focus:outline-none focus:shadow-[0_0_0_3px_rgba(15,79,232,0.15)] transition-all text-sm resize-none ${
+                        fieldErrors.message ? "border-danger/50" : "border-border focus:border-primary"
+                      }`}
+                      placeholder={t("contact_placeholder_message")}
                     />
+                    {fieldErrors.message && (
+                      <p className="mt-2 text-sm text-danger">
+                        {getErrorMessage(fieldErrors.message)}
+                      </p>
+                    )}
                   </div>
 
-                  {status === "error" && (
+                  {submitError && (
                     <motion.p
                       initial={{ opacity: 0, y: -8 }}
                       animate={{ opacity: 1, y: 0 }}
                       className="text-danger text-sm"
                     >
-                      Алдаа гарлаа. Дахин оролдоно уу.
+                      {getErrorMessage(submitError)}
                     </motion.p>
+                  )}
+
+                  {cooldownMessage && (
+                    <p className="text-sm text-text-secondary">{cooldownMessage}</p>
                   )}
 
                   <motion.button
                     type="submit"
-                    disabled={status === "sending"}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="btn-shimmer w-full bg-primary hover:bg-primary/90 disabled:opacity-50 text-white font-semibold py-3 rounded-lg transition-colors glow-primary"
+                    disabled={isSubmitDisabled}
+                    whileHover={isSubmitDisabled ? undefined : { scale: 1.02 }}
+                    whileTap={isSubmitDisabled ? undefined : { scale: 0.98 }}
+                    className="btn-shimmer w-full bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg transition-colors glow-primary"
                   >
                     {status === "sending" ? (
                       <span className="flex items-center justify-center gap-2">
