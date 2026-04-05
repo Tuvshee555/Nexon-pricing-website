@@ -402,44 +402,48 @@ export default function ContactSection() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                      <label htmlFor="contact-name" className="block text-sm font-medium text-text-secondary mb-1.5">
                         {t("contact_name")}
                       </label>
                       <input
+                        id="contact-name"
                         type="text"
                         value={form.name}
                         onChange={(e) => updateField("name", e.target.value)}
                         autoComplete="name"
                         aria-invalid={Boolean(fieldErrors.name)}
+                        aria-describedby={fieldErrors.name ? "contact-name-error" : undefined}
                         className={`w-full bg-surface-2 border rounded-lg px-4 py-2.5 text-text-primary placeholder-muted focus:outline-none focus:shadow-[0_0_0_3px_rgba(15,79,232,0.15)] transition-all text-sm ${
                           fieldErrors.name ? "border-danger/50" : "border-border focus:border-primary"
                         }`}
                         placeholder={t("contact_placeholder_name")}
                       />
                       {fieldErrors.name && (
-                        <p className="mt-2 text-sm text-danger">
+                        <p id="contact-name-error" role="alert" className="mt-2 text-sm text-danger">
                           {getErrorMessage(fieldErrors.name)}
                         </p>
                       )}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                      <label htmlFor="contact-phone" className="block text-sm font-medium text-text-secondary mb-1.5">
                         {t("contact_phone")}
                       </label>
                       <input
+                        id="contact-phone"
                         type="tel"
                         value={form.phone}
                         onChange={(e) => updateField("phone", formatMongolianPhone(e.target.value))}
                         autoComplete="tel"
                         inputMode="tel"
                         aria-invalid={Boolean(fieldErrors.phone)}
+                        aria-describedby={fieldErrors.phone ? "contact-phone-error" : undefined}
                         className={`w-full bg-surface-2 border rounded-lg px-4 py-2.5 text-text-primary placeholder-muted focus:outline-none focus:shadow-[0_0_0_3px_rgba(15,79,232,0.15)] transition-all text-sm ${
                           fieldErrors.phone ? "border-danger/50" : "border-border focus:border-primary"
                         }`}
                         placeholder={t("contact_placeholder_phone")}
                       />
                       {fieldErrors.phone && (
-                        <p className="mt-2 text-sm text-danger">
+                        <p id="contact-phone-error" role="alert" className="mt-2 text-sm text-danger">
                           {getErrorMessage(fieldErrors.phone)}
                         </p>
                       )}
@@ -447,43 +451,47 @@ export default function ContactSection() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                    <label htmlFor="contact-email" className="block text-sm font-medium text-text-secondary mb-1.5">
                       {t("contact_email")}
                     </label>
                     <input
+                      id="contact-email"
                       type="email"
                       value={form.email}
                       onChange={(e) => updateField("email", e.target.value)}
                       autoComplete="email"
                       aria-invalid={Boolean(fieldErrors.email)}
+                      aria-describedby={fieldErrors.email ? "contact-email-error" : undefined}
                       className={`w-full bg-surface-2 border rounded-lg px-4 py-2.5 text-text-primary placeholder-muted focus:outline-none focus:shadow-[0_0_0_3px_rgba(15,79,232,0.15)] transition-all text-sm ${
                         fieldErrors.email ? "border-danger/50" : "border-border focus:border-primary"
                       }`}
                       placeholder={t("contact_placeholder_email")}
                     />
                     {fieldErrors.email && (
-                      <p className="mt-2 text-sm text-danger">
+                      <p id="contact-email-error" role="alert" className="mt-2 text-sm text-danger">
                         {getErrorMessage(fieldErrors.email)}
                       </p>
                     )}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                    <label htmlFor="contact-message" className="block text-sm font-medium text-text-secondary mb-1.5">
                       {t("contact_message")}
                     </label>
                     <textarea
+                      id="contact-message"
                       value={form.message}
                       onChange={(e) => updateField("message", e.target.value)}
                       rows={5}
                       aria-invalid={Boolean(fieldErrors.message)}
+                      aria-describedby={fieldErrors.message ? "contact-message-error" : undefined}
                       className={`w-full bg-surface-2 border rounded-lg px-4 py-2.5 text-text-primary placeholder-muted focus:outline-none focus:shadow-[0_0_0_3px_rgba(15,79,232,0.15)] transition-all text-sm resize-none ${
                         fieldErrors.message ? "border-danger/50" : "border-border focus:border-primary"
                       }`}
                       placeholder={t("contact_placeholder_message")}
                     />
                     {fieldErrors.message && (
-                      <p className="mt-2 text-sm text-danger">
+                      <p id="contact-message-error" role="alert" className="mt-2 text-sm text-danger">
                         {getErrorMessage(fieldErrors.message)}
                       </p>
                     )}

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { MONTHLY_PLANS } from "@/types";
 import { inferTransactionType } from "@/lib/transactions";
+import { toast } from "sonner";
 
 interface BusinessData {
   id: string;
@@ -91,12 +92,16 @@ export default function AdminClientDetail({ business, logs, transactions }: Prop
       });
       const data = await res.json();
       if (!res.ok) {
-        setActionError(data.error || "Алдаа гарлаа");
+        const msg = data.error || "Алдаа гарлаа";
+        setActionError(msg);
+        toast.error(msg);
         return;
       }
+      toast.success("Амжилттай");
       router.refresh();
     } catch {
       setActionError("Сервертэй холбогдож чадсангүй");
+      toast.error("Сервертэй холбогдож чадсангүй");
     } finally {
       setLoading(null);
     }
@@ -112,10 +117,16 @@ export default function AdminClientDetail({ business, logs, transactions }: Prop
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ businessId: business.id, action: "update", ...editForm }),
       });
+      const data = await res.json();
       if (res.ok) {
         setSaveMsg("Амжилттай хадгалагдлаа");
+        toast.success("Амжилттай хадгалагдлаа");
         router.refresh();
+      } else {
+        toast.error(data.error || "Хадгалж чадсангүй");
       }
+    } catch {
+      toast.error("Сервертэй холбогдож чадсангүй");
     } finally {
       setSaving(false);
     }
@@ -127,7 +138,6 @@ export default function AdminClientDetail({ business, logs, transactions }: Prop
       billing_active: editForm.billing_active,
       next_billing_date: editForm.next_billing_date || null,
     });
-    setSaveMsg("Billing тохиргоо хадгалагдлаа");
   };
 
   const handleAddMessages = async () => {

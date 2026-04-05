@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { CREDIT_PACKS } from "@/types";
+import { toast } from "sonner";
 
 interface Props {
   businessId: string;
@@ -82,12 +83,15 @@ export default function BuyCreditsClient({
           if (checkData.paid) {
             stopPolling();
             setPaymentState("success");
+            toast.success("Төлбөр амжилттай!");
           }
         } catch {}
       }, 3000);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Алдаа гарлаа");
+      const msg = err instanceof Error ? err.message : "Алдаа гарлаа";
+      setError(msg);
       setPaymentState("error");
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -300,8 +304,11 @@ export default function BuyCreditsClient({
           <button
             onClick={handleTopup}
             disabled={loading || (!selectedTopup && !customTopup)}
-            className="w-full bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors"
+            className="w-full bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
           >
+            {loading && (
+              <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            )}
             {loading ? "Үүсгэж байна..." : `${(selectedTopup || parseInt(customTopup) || 0).toLocaleString()}₮ нэмэх`}
           </button>
         </div>

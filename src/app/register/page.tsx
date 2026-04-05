@@ -17,6 +17,7 @@ export default function RegisterPage() {
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [emailSent, setEmailSent] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,8 +55,8 @@ export default function RegisterPage() {
           body: JSON.stringify({ email }),
         });
       } catch {}
-      router.push("/dashboard?welcome=1");
-      router.refresh();
+      setEmailSent(true);
+      setLoading(false);
     }
   };
 
@@ -79,6 +80,33 @@ export default function RegisterPage() {
         </div>
 
         <div className="card p-8">
+          {emailSent ? (
+            <div className="text-center space-y-4 py-4">
+              <div className="w-16 h-16 rounded-full bg-success/10 border border-success/30 flex items-center justify-center mx-auto">
+                <svg className="w-8 h-8 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-bold text-text-primary">{t("register_verify_title")}</h2>
+              <p className="text-text-secondary text-sm">{t("register_verify_message")}</p>
+              <p className="text-muted text-xs">{email}</p>
+              <div className="pt-2 space-y-2">
+                <button
+                  onClick={() => router.push("/dashboard?welcome=1")}
+                  className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-2.5 rounded-lg transition-colors"
+                >
+                  {t("register_verify_check")}
+                </button>
+                <Link
+                  href="/login"
+                  className="block text-sm text-accent hover:text-accent/80 font-medium transition-colors"
+                >
+                  {t("register_login")}
+                </Link>
+              </div>
+            </div>
+          ) : (
+          <>
           <h1 className="text-2xl font-bold text-text-primary mb-6 text-center">
             {t("register_title")}
           </h1>
@@ -183,6 +211,8 @@ export default function RegisterPage() {
               {t("register_login")}
             </Link>
           </p>
+          </>
+          )}
         </div>
       </div>
     </div>

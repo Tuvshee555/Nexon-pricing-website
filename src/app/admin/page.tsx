@@ -1,13 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/server";
-import { inferTransactionType } from "@/lib/transactions";
 import Link from "next/link";
-
-const TX_TYPE_LABEL: Record<string, string> = {
-  topup: "Үлдэгдэл нэмэх",
-  message_pack: "Мессеж пакет",
-  subscription: "Сарын захиалга",
-  manual: "Гараар",
-};
+import AdminRecentTransactions from "@/components/admin/AdminRecentTransactions";
 
 export default async function AdminOverviewPage() {
   const adminClient = await createAdminClient();
@@ -54,13 +47,13 @@ export default async function AdminOverviewPage() {
       .select("*, businesses(name)")
       .eq("status", "paid")
       .order("paid_at", { ascending: false })
-      .limit(10),
+      .limit(50),
 
     adminClient
       .from("businesses")
       .select("id, name, created_at, users(email)")
       .order("created_at", { ascending: false })
-      .limit(5),
+      .limit(20),
 
     adminClient
       .from("businesses")
@@ -184,52 +177,7 @@ export default async function AdminOverviewPage() {
               Бүгдийг харах →
             </Link>
           </div>
-          {!recentTransactions || recentTransactions.length === 0 ? (
-            <div className="p-12 text-center text-text-secondary text-sm">
-              Одоогоор төлбөр байхгүй байна.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left text-muted font-medium px-5 py-3">Бизнес</th>
-                    <th className="text-left text-muted font-medium px-5 py-3">Төрөл</th>
-                    <th className="text-right text-muted font-medium px-5 py-3">Дүн</th>
-                    <th className="text-left text-muted font-medium px-5 py-3">Огноо</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentTransactions.map(
-                    (tx: {
-                      id: string;
-                      businesses?: { name: string };
-                      amount: number;
-                      credits_added: number;
-                      transaction_type?: string;
-                      payment_method: string;
-                      paid_at: string | null;
-                    }) => (
-                      <tr key={tx.id} className="border-b border-border/50 hover:bg-surface-2/50">
-                        <td className="px-5 py-3 text-text-primary font-medium">
-                          {tx.businesses?.name || "—"}
-                        </td>
-                        <td className="px-5 py-3 text-text-secondary text-xs">
-                          {TX_TYPE_LABEL[inferTransactionType(tx)] || tx.payment_method}
-                        </td>
-                        <td className="px-5 py-3 text-right text-success font-medium">
-                          {tx.amount > 0 ? `${tx.amount.toLocaleString()}₮` : "—"}
-                        </td>
-                        <td className="px-5 py-3 text-text-secondary text-xs">
-                          {tx.paid_at ? new Date(tx.paid_at).toLocaleDateString("mn-MN") : "—"}
-                        </td>
-                      </tr>
-                    )
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <AdminRecentTransactions transactions={(recentTransactions || []) as { id: string; businesses?: { name: string }; amount: number; credits_added: number; transaction_type?: string; payment_method: string; paid_at: string | null }[]} />
         </div>
 
         <div className="card overflow-hidden">
@@ -242,8 +190,7 @@ export default async function AdminOverviewPage() {
             </div>
           ) : (
             <div className="divide-y divide-border">
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              {(recentClients as any[]).map((client) => (
+              {(recentClients as unknown as { id: string; name: string; created_at: string; users: { email: string } | null }[]).map((client) => (
                 <Link
                   key={client.id}
                   href={`/admin/clients/${client.id}`}
@@ -257,7 +204,7 @@ export default async function AdminOverviewPage() {
                       {client.name || "Тохируулаагүй"}
                     </p>
                     <p className="text-muted text-xs truncate">
-                      {(client.users as { email: string } | null)?.email || "—"}
+                      {client.users?.email || "—"}
                     </p>
                   </div>
                   <p className="text-muted text-xs ml-auto shrink-0">

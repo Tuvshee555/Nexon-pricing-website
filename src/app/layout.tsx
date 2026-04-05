@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "Nexon — Бизнесийн AI Чатбот",
@@ -17,7 +18,20 @@ export default function RootLayout({
   return (
     <html lang="mn">
       <body className="antialiased bg-background text-text-primary">
-        <LanguageProvider>{children}</LanguageProvider>
+        <LanguageProvider>
+          {children}
+          <Toaster
+            theme="dark"
+            position="top-right"
+            toastOptions={{
+              style: {
+                background: "#111118",
+                border: "1px solid #1E1E2E",
+                color: "#F0F0FF",
+              },
+            }}
+          />
+        </LanguageProvider>
       </body>
     </html>
   );
