@@ -14,7 +14,16 @@ import { insertTransaction } from "@/lib/transactions";
  * Set CRON_SECRET in your environment variables and configure
  * an external cron service (e.g., Vercel Cron, cron-job.org) to call this.
  */
+// Vercel Cron calls GET — handle both GET and POST
+export async function GET(request: NextRequest) {
+  return handleBilling(request);
+}
+
 export async function POST(request: NextRequest) {
+  return handleBilling(request);
+}
+
+async function handleBilling(request: NextRequest) {
   try {
     // Verify cron secret
     const authHeader = request.headers.get("authorization");
