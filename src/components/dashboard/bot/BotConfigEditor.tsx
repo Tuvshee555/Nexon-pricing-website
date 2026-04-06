@@ -29,7 +29,6 @@ const TONE_OPTIONS = [
 ];
 
 export default function BotConfigEditor({
-  businessId: _businessId,
   botName: initialBotName,
   botPrompt: initialBotPrompt,
   welcomeMessage: initialWelcome,
