@@ -21,7 +21,7 @@ const TONE_OPTIONS = [
 ];
 
 export default function Step4BotConfig({
-  businessId,
+  businessId: _businessId,
   initialPrompt,
   initialBotName,
   initialWelcome,
