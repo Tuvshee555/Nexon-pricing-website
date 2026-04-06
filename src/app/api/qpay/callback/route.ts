@@ -58,6 +58,20 @@ export async function POST(request: Request) {
       })
       .eq("id", tx.id);
 
+    // Mark onboarding as complete and activate business if this was the first payment
+    const { data: biz } = await supabase
+      .from("businesses")
+      .select("onboarding_done")
+      .eq("id", tx.business_id)
+      .single();
+
+    if (biz && !biz.onboarding_done) {
+      await supabase
+        .from("businesses")
+        .update({ onboarding_done: true, onboarding_step: 5, status: "active" })
+        .eq("id", tx.business_id);
+    }
+
     await notifyPaymentReceived(businessName, tx.amount, txType as "topup" | "message_pack");
 
     return NextResponse.json({ success: true });

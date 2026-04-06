@@ -193,14 +193,26 @@ export async function POST(request: Request) {
             { status: 400 }
           );
         }
-        await adminClient.from("platform_accounts").upsert({
+        const platformData: Record<string, unknown> = {
           business_id: businessId,
           platform: body.platform,
           external_id: body.external_id.trim(),
-        });
+        };
+        // Optional self-service fields: page_id, page_name, page_access_token
+        if (body.page_id && typeof body.page_id === "string") {
+          platformData.page_id = body.page_id.trim();
+        }
+        if (body.page_name && typeof body.page_name === "string") {
+          platformData.page_name = body.page_name.trim();
+        }
+        if (body.page_access_token && typeof body.page_access_token === "string") {
+          platformData.page_access_token = body.page_access_token;
+        }
+        await adminClient.from("platform_accounts").upsert(platformData);
         await logAudit(adminClient, user.id, "add_platform", businessId, {
           platform: body.platform,
           external_id: body.external_id.trim(),
+          page_id: body.page_id,
         });
         break;
       }
@@ -222,6 +234,8 @@ export async function POST(request: Request) {
             contact_phone: "",
             contact_email: "",
             status: "active",
+            onboarding_done: true,
+            onboarding_step: 5,
           })
           .select()
           .single();

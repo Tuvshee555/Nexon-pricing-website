@@ -136,6 +136,86 @@ BEGIN
 END $$;
 
 -- ============================================================
+-- SELF-SERVICE PLATFORM MIGRATIONS (ManyChat-like)
+-- Run these after the migrations above
+-- ============================================================
+
+-- A. Extend businesses for self-service onboarding
+ALTER TABLE public.businesses
+  ADD COLUMN IF NOT EXISTS onboarding_step   INTEGER  NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS onboarding_done   BOOLEAN  NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS bot_name          TEXT     NOT NULL DEFAULT 'Nexon Bot',
+  ADD COLUMN IF NOT EXISTS welcome_message   TEXT     NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS bot_tone          TEXT     NOT NULL DEFAULT 'friendly'
+    CHECK (bot_tone IN ('friendly','formal','professional','casual')),
+  ADD COLUMN IF NOT EXISTS business_type     TEXT     NOT NULL DEFAULT 'other';
+
+-- Mark all existing admin-created businesses as onboarding complete
+UPDATE public.businesses SET onboarding_done = true, onboarding_step = 5
+WHERE onboarding_done = false;
+
+-- B. Extend platform_accounts for per-business FB tokens
+ALTER TABLE public.platform_accounts
+  ADD COLUMN IF NOT EXISTS page_access_token    TEXT,
+  ADD COLUMN IF NOT EXISTS page_name            TEXT     NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS page_id              TEXT,
+  ADD COLUMN IF NOT EXISTS instagram_account_id TEXT,
+  ADD COLUMN IF NOT EXISTS token_expires_at     TIMESTAMPTZ;
+
+CREATE INDEX IF NOT EXISTS idx_platform_accounts_page_id
+  ON public.platform_accounts(page_id);
+
+-- C. Conversation threads table for chat history
+CREATE TABLE IF NOT EXISTS public.conversation_threads (
+  id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  business_id     UUID        NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  platform        TEXT        NOT NULL CHECK (platform IN ('instagram','messenger')),
+  sender_id       TEXT        NOT NULL,
+  messages        JSONB       NOT NULL DEFAULT '[]',
+  last_message_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(business_id, platform, sender_id)
+);
+CREATE INDEX IF NOT EXISTS idx_conv_threads_business
+  ON public.conversation_threads(business_id, last_message_at DESC);
+ALTER TABLE public.conversation_threads ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "conv_threads_own" ON public.conversation_threads
+  FOR ALL USING (
+    EXISTS (SELECT 1 FROM businesses b WHERE b.id = conversation_threads.business_id
+      AND (b.user_id = auth.uid() OR is_admin()))
+  );
+
+-- D. Fix RLS policies for self-service
+DROP POLICY IF EXISTS "businesses_insert_admin" ON businesses;
+CREATE POLICY "businesses_insert_self" ON businesses
+  FOR INSERT WITH CHECK (user_id = auth.uid() OR is_admin());
+
+DROP POLICY IF EXISTS "businesses_update_admin" ON businesses;
+CREATE POLICY "businesses_update_own" ON businesses
+  FOR UPDATE USING (user_id = auth.uid() OR is_admin());
+
+DROP POLICY IF EXISTS "platform_accounts_write_admin" ON platform_accounts;
+CREATE POLICY "platform_accounts_write_own" ON platform_accounts
+  FOR ALL USING (
+    EXISTS (SELECT 1 FROM businesses b WHERE b.id = platform_accounts.business_id
+      AND (b.user_id = auth.uid() OR is_admin()))
+  );
+
+DROP POLICY IF EXISTS "credits_write_admin" ON credits;
+CREATE POLICY "credits_write_own" ON credits
+  FOR ALL USING (
+    EXISTS (SELECT 1 FROM businesses b WHERE b.id = credits.business_id
+      AND (b.user_id = auth.uid() OR is_admin()))
+  );
+
+DROP POLICY IF EXISTS "plans_write_admin" ON plans;
+CREATE POLICY "plans_write_own" ON plans
+  FOR ALL USING (
+    EXISTS (SELECT 1 FROM businesses b WHERE b.id = plans.business_id
+      AND (b.user_id = auth.uid() OR is_admin()))
+  );
+
+-- ============================================================
 -- How to set up a client on the monthly plan:
 --
 -- UPDATE public.businesses SET

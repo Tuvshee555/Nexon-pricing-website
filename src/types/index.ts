@@ -23,6 +23,13 @@ export interface Business {
   subscription_price: number;
   next_billing_date: string | null;
   billing_active: boolean;
+  // Self-service fields
+  onboarding_step: number;
+  onboarding_done: boolean;
+  bot_name: string;
+  welcome_message: string;
+  bot_tone: "friendly" | "formal" | "professional" | "casual";
+  business_type: string;
 }
 
 export type PlanType = "monthly" | "credit";
@@ -80,6 +87,12 @@ export interface PlatformAccount {
   business_id: string;
   platform: Platform;
   external_id: string;
+  // Self-service fields
+  page_access_token?: string;
+  page_name?: string;
+  page_id?: string;
+  instagram_account_id?: string;
+  token_expires_at?: string;
 }
 
 export interface CreditPack {

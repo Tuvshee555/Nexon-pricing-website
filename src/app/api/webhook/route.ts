@@ -35,37 +35,53 @@ export async function POST(request: Request) {
 
       if (!messaging) continue;
 
+      // entry.id is the Facebook Page ID that received the message.
+      // Look up the platform_accounts row by page_id to find the business
+      // and retrieve the per-business page access token.
+      const pageId = entry.id as string;
+
+      const { data: pageAccount } = await supabase
+        .from("platform_accounts")
+        .select("business_id, page_access_token")
+        .eq("page_id", pageId)
+        .maybeSingle();
+
+      // Per-business token (self-service) OR legacy env var fallback
+      const pageAccessToken: string | undefined =
+        pageAccount?.page_access_token ?? process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
+
       for (const event of messaging) {
         // Determine platform
         const platform = body.object === "instagram" ? "instagram" : "messenger";
 
         // Get sender ID
-        const senderId =
-          event.sender?.id ||
-          event.from?.id;
-
+        const senderId = event.sender?.id || event.from?.id;
         if (!senderId) continue;
 
         // Skip if no message text
         const messageText = event.message?.text || event.text;
         if (!messageText) continue;
 
-        // Look up business via platform_accounts
-        const { data: platformAccount } = await supabase
-          .from("platform_accounts")
-          .select("business_id")
-          .eq("platform", platform)
-          .eq("external_id", senderId)
-          .single();
+        // Resolve business_id: prefer the page_id lookup above, fall back to
+        // legacy sender-based lookup for admin-configured businesses.
+        let businessId: string | null = pageAccount?.business_id ?? null;
 
-        if (!platformAccount) continue;
+        if (!businessId) {
+          const { data: senderAccount } = await supabase
+            .from("platform_accounts")
+            .select("business_id")
+            .eq("platform", platform)
+            .eq("external_id", senderId)
+            .maybeSingle();
+          businessId = senderAccount?.business_id ?? null;
+        }
 
-        const businessId = platformAccount.business_id;
+        if (!businessId) continue;
 
         // Get business info
         const { data: business } = await supabase
           .from("businesses")
-          .select("bot_prompt, status")
+          .select("bot_prompt, bot_name, welcome_message, status")
           .eq("id", businessId)
           .single();
 
@@ -79,11 +95,35 @@ export async function POST(request: Request) {
           .single();
 
         if (!credits || credits.balance <= 0) {
-          await sendFacebookMessage(senderId, "Таны кредит дууссан байна. Nexon хяналтын самбараас кредит нэмнэ үү.", platform, entry.id);
+          if (pageAccessToken) {
+            await sendFacebookMessage(senderId, "Таны кредит дууссан байна. Nexon хяналтын самбараас кредит нэмнэ үү.", platform, pageAccessToken);
+          }
           continue;
         }
 
+        // Build conversation history for context
+        const { data: thread } = await supabase
+          .from("conversation_threads")
+          .select("messages")
+          .eq("business_id", businessId)
+          .eq("platform", platform)
+          .eq("sender_id", senderId)
+          .maybeSingle();
+
+        const history: Array<{ role: string; content: string }> = Array.isArray(thread?.messages)
+          ? (thread.messages as Array<{ role: string; content: string }>).slice(-10)
+          : [];
+
         // Call OpenAI
+        const openaiMessages = [
+          {
+            role: "system",
+            content: business.bot_prompt || "Та туслах AI байна.",
+          },
+          ...history,
+          { role: "user", content: messageText },
+        ];
+
         const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
           headers: {
@@ -92,16 +132,7 @@ export async function POST(request: Request) {
           },
           body: JSON.stringify({
             model: OPENAI_MODEL,
-            messages: [
-              {
-                role: "system",
-                content: business.bot_prompt || "Та туслах AI байна.",
-              },
-              {
-                role: "user",
-                content: messageText,
-              },
-            ],
+            messages: openaiMessages,
             max_tokens: 500,
           }),
         });
@@ -118,7 +149,7 @@ export async function POST(request: Request) {
         // Calculate credits used (ceil total_tokens / 1000, min 1)
         const creditsUsed = Math.max(1, Math.ceil(usage.total_tokens / 1000));
 
-        // Deduct credits — direct update
+        // Re-fetch credits to avoid race (use row-level update)
         const { data: curCredits } = await supabase
           .from("credits")
           .select("balance")
@@ -126,7 +157,9 @@ export async function POST(request: Request) {
           .single();
 
         if (!curCredits || curCredits.balance < creditsUsed) {
-          await sendFacebookMessage(senderId, "Таны мессеж дууссан байна. Nexon хяналтын самбараас мессеж нэмнэ үү.", platform, entry.id);
+          if (pageAccessToken) {
+            await sendFacebookMessage(senderId, "Таны мессеж дууссан байна. Nexon хяналтын самбараас мессеж нэмнэ үү.", platform, pageAccessToken);
+          }
           continue;
         }
 
@@ -147,8 +180,29 @@ export async function POST(request: Request) {
           source: "api",
         });
 
+        // Update conversation thread
+        const updatedMessages = [
+          ...history,
+          { role: "user", content: messageText },
+          { role: "assistant", content: reply },
+        ].slice(-20); // Keep last 20 messages
+
+        await supabase
+          .from("conversation_threads")
+          .upsert({
+            business_id: businessId,
+            platform,
+            sender_id: senderId,
+            messages: updatedMessages,
+            last_message_at: new Date().toISOString(),
+          }, { onConflict: "business_id,platform,sender_id" });
+
         // Send reply
-        await sendFacebookMessage(senderId, reply, platform, entry.id);
+        if (pageAccessToken) {
+          await sendFacebookMessage(senderId, reply, platform, pageAccessToken);
+        } else {
+          console.warn("No page access token available for business", businessId);
+        }
       }
     }
 
@@ -164,19 +218,12 @@ async function sendFacebookMessage(
   recipientId: string,
   text: string,
   platform: string,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _pageId?: string
+  pageAccessToken: string
 ): Promise<void> {
-  const pageAccessToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
-  if (!pageAccessToken) {
-    console.warn("FACEBOOK_PAGE_ACCESS_TOKEN not set — skipping send");
-    return;
-  }
-
   const endpoint =
     platform === "instagram"
-      ? `https://graph.facebook.com/v18.0/me/messages`
-      : `https://graph.facebook.com/v18.0/me/messages`;
+      ? `https://graph.facebook.com/v19.0/me/messages`
+      : `https://graph.facebook.com/v19.0/me/messages`;
 
   try {
     const res = await fetch(`${endpoint}?access_token=${pageAccessToken}`, {
