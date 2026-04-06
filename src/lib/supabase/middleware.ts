@@ -2,10 +2,16 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
+  // Inject current pathname into request headers so server components can read it
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", request.nextUrl.pathname);
+
   // IMPORTANT: Start with a simple next() — only set cookies if
   // Supabase actually refreshes the session tokens. This prevents
   // cookie churn that breaks client-side navigation in Next.js 14.
-  let supabaseResponse = NextResponse.next({ request });
+  let supabaseResponse = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,8 +27,8 @@ export async function updateSession(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
-          // Re-create the response to carry the new cookies
-          supabaseResponse = NextResponse.next({ request });
+          // Re-create the response to carry the new cookies (preserve pathname header)
+          supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           );
