@@ -39,8 +39,17 @@ export default async function DashboardLayout({
   const pathname = headersList.get("x-pathname") || headersList.get("x-invoke-path") || "";
   const isSetupPath = pathname.includes("/dashboard/setup");
 
-  // Redirect to onboarding if business not set up or onboarding not done
-  if (!isSetupPath && (!business || !business.onboarding_done)) {
+  // Also redirect if business exists but has no connected platforms (admin-created, skipped onboarding)
+  const { data: platforms } = business
+    ? await adminClient
+        .from("platform_accounts")
+        .select("id")
+        .eq("business_id", business.id)
+        .limit(1)
+    : { data: null };
+
+  // Redirect to onboarding if: no business, onboarding not done, or no platforms connected
+  if (!isSetupPath && (!business || !business.onboarding_done || !platforms?.length)) {
     redirect("/dashboard/setup");
   }
 
