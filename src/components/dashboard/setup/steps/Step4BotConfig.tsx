@@ -21,6 +21,7 @@ const TONE_OPTIONS = [
 ];
 
 export default function Step4BotConfig({
+  businessId,
   initialPrompt,
   initialBotName,
   initialWelcome,
@@ -54,6 +55,7 @@ export default function Step4BotConfig({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          businessId,
           botPrompt: botPrompt.trim(),
           botName: botName.trim() || "Nexon Bot",
           welcomeMessage: welcomeMessage.trim(),

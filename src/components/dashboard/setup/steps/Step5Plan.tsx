@@ -68,23 +68,33 @@ export default function Step5Plan({
       setInvoice(data);
       setPayState("qr");
 
-      // Poll for payment
+      // Poll for payment (max 15 minutes = 300 attempts × 3s)
+      let attempts = 0;
       pollRef.current = setInterval(async () => {
+        if (++attempts > 300) {
+          clearInterval(pollRef.current!);
+          setPayState("select");
+          toast.error("Төлбөр баталгаажаагүй байна. Дахин оролдоно уу.");
+          return;
+        }
         try {
           const checkRes = await fetch(`/api/qpay/check?invoice_id=${data.invoice_id}`);
           const checkData = await checkRes.json();
           if (checkData.paid) {
             clearInterval(pollRef.current!);
-            // Mark onboarding as complete
-            await fetch("/api/business/update-status", {
+            const statusRes = await fetch("/api/business/update-status", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ status: "active" }),
             });
+            if (!statusRes.ok) {
+              toast.error("Төлбөр амжилттай боловч идэвхжүүлэхэд алдаа гарлаа. Дахин нэвтэрнэ үү.");
+              return;
+            }
             setPayState("success");
           }
         } catch {
-          // Ignore polling errors
+          // Transient network error — keep polling
         }
       }, 3000);
     } catch (err) {

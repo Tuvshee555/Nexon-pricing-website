@@ -22,7 +22,23 @@ export async function GET(request: Request) {
 // ─── POST: Receive messages ───────────────────────────────────────────────────
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    // Verify Facebook webhook signature
+    const appSecret = process.env.FACEBOOK_APP_SECRET;
+    if (appSecret) {
+      const signature = request.headers.get("x-hub-signature-256");
+      const rawBody = await request.text();
+      if (!signature) {
+        return NextResponse.json({ error: "Missing signature" }, { status: 403 });
+      }
+      const { createHmac } = await import("crypto");
+      const expected = "sha256=" + createHmac("sha256", appSecret).update(rawBody).digest("hex");
+      if (signature !== expected) {
+        return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
+      }
+      var body = JSON.parse(rawBody);
+    } else {
+      var body = await request.json();
+    }
 
     if (body.object !== "page" && body.object !== "instagram") {
       return NextResponse.json({ error: "Not a page event" }, { status: 200 });
@@ -163,10 +179,15 @@ export async function POST(request: Request) {
           continue;
         }
 
-        await supabase
+        // Atomic deduction: only succeeds if balance is still sufficient
+        const { data: deducted } = await supabase
           .from("credits")
           .update({ balance: curCredits.balance - creditsUsed })
-          .eq("business_id", businessId);
+          .eq("business_id", businessId)
+          .gte("balance", creditsUsed)
+          .select("balance");
+
+        if (!deducted?.length) continue; // Race: another message already consumed credits
 
         // Log message
         await supabase.from("message_logs").insert({

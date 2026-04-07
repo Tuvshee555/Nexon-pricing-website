@@ -62,10 +62,13 @@ export async function GET(request: Request) {
         .single();
 
       if (biz && !biz.onboarding_done) {
-        await supabase
+        const { error: activateErr } = await supabase
           .from("businesses")
           .update({ onboarding_done: true, onboarding_step: 5, status: "active" })
           .eq("id", tx.business_id);
+        if (activateErr) {
+          console.error("Failed to activate business after payment:", activateErr);
+        }
       }
 
       await notifyPaymentReceived(businessName, tx.amount, txType as "topup" | "message_pack");
