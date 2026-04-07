@@ -176,11 +176,6 @@ const en = {
   register_verify_message: "Please check your email to verify your account.",
   register_verify_check: "Check email",
 
-  // Dashboard empty state
-  dashboard_no_business_title: "Business not set up yet",
-  dashboard_no_business_desc: "Your business is being activated. Please contact the admin to complete setup.",
-  dashboard_contact_admin: "Contact admin",
-  dashboard_contact_phone: "+976 8618 5769",
 } as const;
 
 export default en;

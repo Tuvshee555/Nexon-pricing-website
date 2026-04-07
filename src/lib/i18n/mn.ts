@@ -176,11 +176,6 @@ const mn = {
   register_verify_message: "Бүртгэлээ баталгаажуулахын тулд и-мэйлээ шалгана уу.",
   register_verify_check: "И-мэйл шалгах",
 
-  // Dashboard empty state
-  dashboard_no_business_title: "Бизнес тохируулагдаагүй байна",
-  dashboard_no_business_desc: "Таны бизнесийг идэвхжүүлж байна. Админтай холбоо барьж, тохиргоог дуусгана уу.",
-  dashboard_contact_admin: "Админтай холбоо барих",
-  dashboard_contact_phone: "+976 8618 5769",
 } as const;
 
 export default mn;
