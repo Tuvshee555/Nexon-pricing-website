@@ -59,6 +59,7 @@ export default function OnboardingWizard({
     urlBusinessId || business?.id || ""
   );
   const [pageName, setPageName] = useState("");
+  const [pageId, setPageId] = useState("");
   const [instagramConnected, setInstagramConnected] = useState(false);
 
   // Auto-advance if returning from Facebook OAuth
@@ -132,8 +133,9 @@ export default function OnboardingWizard({
             businessId={businessId}
             fbConnected={!!fbConnected}
             fbError={fbError}
-            onNext={(pName) => {
+            onNext={(pName, pId) => {
               setPageName(pName);
+              setPageId(pId);
               setStep(3);
             }}
             onSkip={() => setStep(4)}
@@ -143,6 +145,7 @@ export default function OnboardingWizard({
         {step === 3 && (
           <Step3Instagram
             businessId={businessId}
+            pageId={pageId}
             onNext={(igConnected) => {
               setInstagramConnected(igConnected);
               setStep(4);

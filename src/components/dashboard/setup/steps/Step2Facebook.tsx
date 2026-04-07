@@ -13,7 +13,7 @@ interface Props {
   businessId: string;
   fbConnected: boolean;
   fbError?: string;
-  onNext: (pageName: string) => void;
+  onNext: (pageName: string, pageId: string) => void;
   onSkip: () => void;
 }
 
@@ -78,7 +78,7 @@ export default function Step2Facebook({
       }
 
       toast.success(`"${selectedPage?.name}" хуудас холбогдлоо`);
-      onNext(selectedPage?.name || "");
+      onNext(selectedPage?.name || "", selectedPageId);
     } catch {
       toast.error("Холболтын алдаа гарлаа");
     } finally {

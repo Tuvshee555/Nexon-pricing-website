@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
+import { needsOnboarding } from "@/lib/onboarding";
 
 export const dynamic = "force-dynamic";
 
@@ -30,9 +31,16 @@ export default async function DashboardLayout({
   // Check onboarding status
   const { data: business } = await adminClient
     .from("businesses")
-    .select("id, onboarding_done")
+    .select("id, onboarding_done, status, platforms, bot_prompt")
     .eq("user_id", user.id)
     .maybeSingle();
+
+  const { data: platformAccounts } = business
+    ? await adminClient
+        .from("platform_accounts")
+        .select("page_id, external_id, page_access_token")
+        .eq("business_id", business.id)
+    : { data: [] };
 
   // Get current path to avoid redirect loop on /dashboard/setup
   const headersList = await headers();
@@ -40,7 +48,7 @@ export default async function DashboardLayout({
   const isSetupPath = pathname.includes("/dashboard/setup");
 
   // Redirect to onboarding if no business or onboarding not complete
-  if (!isSetupPath && (!business || !business.onboarding_done)) {
+  if (!isSetupPath && needsOnboarding(business, platformAccounts || [])) {
     redirect("/dashboard/setup");
   }
 

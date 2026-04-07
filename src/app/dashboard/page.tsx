@@ -1,6 +1,7 @@
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import ClientDashboard from "@/components/dashboard/ClientDashboard";
+import { needsOnboarding } from "@/lib/onboarding";
 
 export default async function DashboardPage({
   searchParams,
@@ -27,6 +28,15 @@ export default async function DashboardPage({
     .single();
 
   if (!business) {
+    redirect("/dashboard/setup");
+  }
+
+  const { data: platformAccounts } = await adminClient
+    .from("platform_accounts")
+    .select("page_id, external_id, page_access_token")
+    .eq("business_id", business.id);
+
+  if (needsOnboarding(business, platformAccounts || [])) {
     redirect("/dashboard/setup");
   }
 

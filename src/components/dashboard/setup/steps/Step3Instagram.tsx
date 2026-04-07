@@ -5,21 +5,27 @@ import { toast } from "sonner";
 
 interface Props {
   businessId: string;
+  pageId: string;
   onNext: (instagramConnected: boolean) => void;
   onSkip: () => void;
 }
 
-export default function Step3Instagram({ businessId, onNext, onSkip }: Props) {
+export default function Step3Instagram({ businessId, pageId, onNext, onSkip }: Props) {
   const [loading, setLoading] = useState(false);
 
   const handleConnect = async () => {
+    if (!pageId) {
+      toast.error("Facebook page must be connected first");
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await fetch("/api/facebook/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          pageId: "", // Will be taken from cookie via subscribe route logic
+          pageId,
           businessId,
           connectInstagram: true,
         }),

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { needsOnboarding } from "@/lib/onboarding";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -21,11 +22,18 @@ export async function POST(request: Request) {
   // Check if user already has a business
   const { data: existing } = await adminClient
     .from("businesses")
-    .select("id, onboarding_done")
+    .select("id, onboarding_done, status, platforms, bot_prompt")
     .eq("user_id", user.id)
     .maybeSingle();
 
-  if (existing?.onboarding_done) {
+  const { data: platformAccounts } = existing
+    ? await adminClient
+        .from("platform_accounts")
+        .select("page_id, external_id, page_access_token")
+        .eq("business_id", existing.id)
+    : { data: [] };
+
+  if (existing && !needsOnboarding(existing, platformAccounts || [])) {
     return NextResponse.json({ error: "Business already exists" }, { status: 409 });
   }
 
@@ -33,7 +41,13 @@ export async function POST(request: Request) {
   if (existing) {
     await adminClient
       .from("businesses")
-      .update({ name: businessName.trim(), business_type: businessType || "other", onboarding_step: 1 })
+      .update({
+        name: businessName.trim(),
+        business_type: businessType || "other",
+        onboarding_step: 1,
+        onboarding_done: false,
+        status: "paused",
+      })
       .eq("id", existing.id);
     return NextResponse.json({ businessId: existing.id });
   }

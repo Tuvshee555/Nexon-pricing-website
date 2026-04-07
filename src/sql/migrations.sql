@@ -150,9 +150,13 @@ ALTER TABLE public.businesses
     CHECK (bot_tone IN ('friendly','formal','professional','casual')),
   ADD COLUMN IF NOT EXISTS business_type     TEXT     NOT NULL DEFAULT 'other';
 
--- Mark all existing admin-created businesses as onboarding complete
+-- Mark only already-configured admin-created businesses as onboarding complete.
+-- Empty/paused placeholder rows should still go through self-service setup.
 UPDATE public.businesses SET onboarding_done = true, onboarding_step = 5
-WHERE onboarding_done = false;
+WHERE onboarding_done = false
+  AND status <> 'paused'
+  AND NULLIF(TRIM(bot_prompt), '') IS NOT NULL
+  AND COALESCE(array_length(platforms, 1), 0) > 0;
 
 -- B. Extend platform_accounts for per-business FB tokens
 ALTER TABLE public.platform_accounts
