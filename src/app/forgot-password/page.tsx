@@ -2,12 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function ForgotPasswordPage() {
   const { t } = useLanguage();
-  const supabase = createClient();
 
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -19,17 +17,18 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     setError("");
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+    const res = await fetch("/api/auth/forgot-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
     });
 
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-    } else {
+    if (res.ok) {
       setSent(true);
-      setLoading(false);
+    } else {
+      setError("Алдаа гарлаа. Дахин оролдоно уу.");
     }
+    setLoading(false);
   };
 
   return (

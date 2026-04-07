@@ -1,4 +1,4 @@
-import { createAdminClient } from "@/lib/supabase/server";
+import { sql } from "@/lib/db";
 import { notFound } from "next/navigation";
 import AdminClientDetail from "@/components/admin/AdminClientDetail";
 
@@ -8,40 +8,34 @@ export default async function AdminClientDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const adminClient = await createAdminClient();
 
-  // Fetch business separately to avoid FK join issues
-  const { data: business } = await adminClient
-    .from("businesses")
-    .select("*")
-    .eq("id", id)
-    .single();
-
+  const businesses = await sql`SELECT * FROM businesses WHERE id = ${id}`;
+  const business = businesses[0] ?? null;
   if (!business) notFound();
 
-  // Fetch related data separately
-  const [userRes, planRes, creditRes, platformRes, logsRes, txRes] = await Promise.all([
-    adminClient.from("users").select("id, email").eq("id", business.user_id).single(),
-    adminClient.from("plans").select("*").eq("business_id", id).single(),
-    adminClient.from("credits").select("*").eq("business_id", id).single(),
-    adminClient.from("platform_accounts").select("*").eq("business_id", id),
-    adminClient.from("message_logs").select("*").eq("business_id", id).order("logged_at", { ascending: false }).limit(20),
-    adminClient.from("transactions").select("*").eq("business_id", id).order("created_at", { ascending: false }).limit(20),
+  const [userRows, planRows, creditRows, platformRows, logsRows, txRows] = await Promise.all([
+    sql`SELECT id, email FROM users WHERE id = ${business.user_id as string} LIMIT 1`,
+    sql`SELECT * FROM plans WHERE business_id = ${id} LIMIT 1`,
+    sql`SELECT * FROM credits WHERE business_id = ${id} LIMIT 1`,
+    sql`SELECT * FROM platform_accounts WHERE business_id = ${id}`,
+    sql`SELECT * FROM message_logs WHERE business_id = ${id} ORDER BY logged_at DESC LIMIT 20`,
+    sql`SELECT * FROM transactions WHERE business_id = ${id} ORDER BY created_at DESC LIMIT 20`,
   ]);
 
   const businessData = {
     ...business,
-    users: userRes.data || null,
-    plans: planRes.data || null,
-    credits: creditRes.data || null,
-    platform_accounts: platformRes.data || [],
-  };
+    users: userRows[0] || null,
+    plans: planRows[0] || null,
+    credits: creditRows[0] || null,
+    platform_accounts: platformRows,
+  } as unknown as Parameters<typeof AdminClientDetail>[0]["business"];
 
+  type DetailProps = Parameters<typeof AdminClientDetail>[0];
   return (
     <AdminClientDetail
       business={businessData}
-      logs={logsRes.data || []}
-      transactions={txRes.data || []}
+      logs={logsRows as unknown as DetailProps["logs"]}
+      transactions={txRows as unknown as DetailProps["transactions"]}
     />
   );
 }

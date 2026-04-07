@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/auth";
+import { sql } from "@/lib/db";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import { needsOnboarding } from "@/lib/onboarding";
 
@@ -11,50 +13,40 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const session = await getServerSession(authOptions);
+  if (!session) redirect("/login");
 
-  if (!user) redirect("/login");
+  const userId = session.user.id;
+  const role = session.user.role || "client";
 
-  // Use admin client for DB queries to bypass RLS issues
-  const adminClient = await createAdminClient();
-  const { data: userData } = await adminClient
-    .from("users")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (userData?.role === "admin") redirect("/admin");
+  if (role === "admin") redirect("/admin");
 
   // Check onboarding status
-  const { data: business } = await adminClient
-    .from("businesses")
-    .select("id, onboarding_done, status, platforms, bot_prompt")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const businesses = await sql`
+    SELECT id, onboarding_done, status, platforms, bot_prompt
+    FROM businesses WHERE user_id = ${userId}
+  `;
+  const business = businesses[0] ?? null;
 
-  const { data: platformAccounts } = business
-    ? await adminClient
-        .from("platform_accounts")
-        .select("page_id, external_id, page_access_token")
-        .eq("business_id", business.id)
-    : { data: [] };
+  const platformAccounts = business
+    ? await sql`
+        SELECT page_id, external_id, page_access_token
+        FROM platform_accounts WHERE business_id = ${business.id as string}
+      `
+    : [];
 
   // Get current path to avoid redirect loop on /dashboard/setup
   const headersList = await headers();
-  const pathname = headersList.get("x-pathname") || headersList.get("x-invoke-path") || "";
+  const pathname = headersList.get("x-pathname") || "";
   const isSetupPath = pathname.includes("/dashboard/setup");
 
-  // Redirect to onboarding if no business or onboarding not complete
-  if (!isSetupPath && needsOnboarding(business, platformAccounts || [])) {
+  if (!isSetupPath && needsOnboarding(business, platformAccounts)) {
     redirect("/dashboard/setup");
   }
 
   return (
     <div className="min-h-screen bg-background flex">
-      <DashboardSidebar user={user} role={userData?.role || "client"} />
+      <DashboardSidebar user={{ email: session.user.email, name: session.user.name }} role={role} />
       <main className="flex-1 lg:ml-64 p-6">{children}</main>
     </div>
   );

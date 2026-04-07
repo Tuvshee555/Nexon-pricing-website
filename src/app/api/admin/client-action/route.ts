@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/auth";
+import { sql } from "@/lib/db";
 import { MONTHLY_PLANS } from "@/types";
 import { addCredits, addVirtualBalance } from "@/lib/credits";
 import { insertTransaction } from "@/lib/transactions";
@@ -17,42 +19,28 @@ function isValidPlatformId(platform: string, externalId: string): boolean {
   if (!externalId || typeof externalId !== "string") return false;
   const trimmed = externalId.trim();
   if (trimmed.length < 3 || trimmed.length > 100) return false;
-  // Only allow alphanumeric, dots, underscores, hyphens
   return /^[a-zA-Z0-9._-]+$/.test(trimmed);
+}
+
+async function logAudit(adminId: string, action: string, businessId: string | null, details?: Record<string, unknown>) {
+  try {
+    await sql`
+      INSERT INTO audit_logs (admin_id, action, business_id, details)
+      VALUES (${adminId}, ${action}, ${businessId}, ${JSON.stringify(details || {})})
+    `;
+  } catch (err) {
+    console.error("Audit log insert failed:", err);
+  }
 }
 
 const VALID_ACTIONS = [
   "activate", "pause", "cancel", "add_credits", "reduce_credits",
   "add_balance", "set_billing", "add_platform", "setup_business", "update",
 ] as const;
-
 type ValidAction = typeof VALID_ACTIONS[number];
-
-async function logAudit(
-  adminClient: Awaited<ReturnType<typeof createAdminClient>>,
-  adminId: string,
-  action: string,
-  businessId: string | null,
-  details?: Record<string, unknown>
-) {
-  try {
-    await adminClient.from("audit_logs").insert({
-      admin_id: adminId,
-      action,
-      business_id: businessId,
-      details: details || {},
-      created_at: new Date().toISOString(),
-    });
-  } catch (err) {
-    // Don't fail the request if audit logging fails — log it server-side
-    console.error("Audit log insert failed:", err);
-  }
-}
 
 export async function POST(request: Request) {
   try {
-    // Read body FIRST — before cookies() is called by createClient()
-    // Next.js 14 can fail to read request body after cookies() is accessed
     const body = await request.json();
     const { businessId, action } = body;
 
@@ -60,122 +48,75 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unknown action" }, { status: 400 });
     }
 
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (session.user.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const adminId = session.user.id;
 
-    const adminClient = await createAdminClient();
-
-    const { data: userData } = await adminClient
-      .from("users")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    if (userData?.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    switch (action) {
+    switch (action as ValidAction) {
       case "activate":
-        await adminClient
-          .from("businesses")
-          .update({ status: "active" })
-          .eq("id", businessId);
-        await logAudit(adminClient, user.id, "activate", businessId);
+        await sql`UPDATE businesses SET status = 'active' WHERE id = ${businessId}`;
+        await logAudit(adminId, "activate", businessId);
         break;
 
       case "pause":
-        await adminClient
-          .from("businesses")
-          .update({ status: "paused" })
-          .eq("id", businessId);
-        await logAudit(adminClient, user.id, "pause", businessId);
+        await sql`UPDATE businesses SET status = 'paused' WHERE id = ${businessId}`;
+        await logAudit(adminId, "pause", businessId);
         break;
 
       case "cancel":
-        await adminClient
-          .from("businesses")
-          .update({ status: "cancelled" })
-          .eq("id", businessId);
-        await logAudit(adminClient, user.id, "cancel", businessId);
+        await sql`UPDATE businesses SET status = 'cancelled' WHERE id = ${businessId}`;
+        await logAudit(adminId, "cancel", businessId);
         break;
 
       case "add_credits": {
         const credits = safeInt(body.credits, MAX_CREDITS);
-        if (!credits) {
-          return NextResponse.json({ error: "Invalid credits (must be 1-1,000,000)" }, { status: 400 });
-        }
-        await addCredits(adminClient, businessId, credits);
-        await insertTransaction(adminClient, {
-          business_id: businessId,
-          amount: 0,
-          credits_added: credits,
-          payment_method: "manual",
-          status: "paid",
-          paid_at: new Date().toISOString(),
-          transaction_type: "manual",
+        if (!credits) return NextResponse.json({ error: "Invalid credits (must be 1-1,000,000)" }, { status: 400 });
+        await addCredits(businessId, credits);
+        await insertTransaction({
+          business_id: businessId, amount: 0, credits_added: credits,
+          payment_method: "manual", status: "paid",
+          paid_at: new Date().toISOString(), transaction_type: "manual",
         });
-        await logAudit(adminClient, user.id, "add_credits", businessId, { credits });
+        await logAudit(adminId, "add_credits", businessId, { credits });
         break;
       }
 
       case "reduce_credits": {
         const reduceAmount = safeInt(body.credits, MAX_CREDITS);
-        if (!reduceAmount) {
-          return NextResponse.json({ error: "Invalid credits (must be 1-1,000,000)" }, { status: 400 });
-        }
-        const { data: curCredits } = await adminClient
-          .from("credits")
-          .select("balance")
-          .eq("business_id", businessId)
-          .single();
-
-        const newBalance = Math.max(0, (curCredits?.balance || 0) - reduceAmount);
-        await adminClient
-          .from("credits")
-          .update({ balance: newBalance })
-          .eq("business_id", businessId);
-        await logAudit(adminClient, user.id, "reduce_credits", businessId, { reduceAmount, newBalance });
+        if (!reduceAmount) return NextResponse.json({ error: "Invalid credits" }, { status: 400 });
+        const curRows = await sql`SELECT balance FROM credits WHERE business_id = ${businessId} LIMIT 1`;
+        const newBalance = Math.max(0, ((curRows[0]?.balance as number) || 0) - reduceAmount);
+        await sql`UPDATE credits SET balance = ${newBalance} WHERE business_id = ${businessId}`;
+        await logAudit(adminId, "reduce_credits", businessId, { reduceAmount, newBalance });
         break;
       }
 
       case "add_balance": {
         const amount = safeInt(body.amount, MAX_BALANCE);
-        if (!amount) {
-          return NextResponse.json({ error: "Invalid amount (must be 1-100,000,000)" }, { status: 400 });
-        }
-        await addVirtualBalance(adminClient, businessId, amount);
-        await insertTransaction(adminClient, {
-          business_id: businessId,
-          amount,
-          credits_added: 0,
-          payment_method: "manual",
-          status: "paid",
-          paid_at: new Date().toISOString(),
-          transaction_type: "topup",
+        if (!amount) return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
+        await addVirtualBalance(businessId, amount);
+        await insertTransaction({
+          business_id: businessId, amount, credits_added: 0,
+          payment_method: "manual", status: "paid",
+          paid_at: new Date().toISOString(), transaction_type: "topup",
         });
-        await logAudit(adminClient, user.id, "add_balance", businessId, { amount });
+        await logAudit(adminId, "add_balance", businessId, { amount });
         break;
       }
 
       case "set_billing": {
         const subPrice = parseInt(String(body.subscription_price)) || 0;
-        if (subPrice < 0 || subPrice > MAX_BALANCE) {
-          return NextResponse.json({ error: "Invalid subscription price" }, { status: 400 });
-        }
-        await adminClient
-          .from("businesses")
-          .update({
-            subscription_price: subPrice,
-            billing_active: body.billing_active === true,
-            next_billing_date: body.next_billing_date || null,
-          })
-          .eq("id", businessId);
-        await logAudit(adminClient, user.id, "set_billing", businessId, {
+        if (subPrice < 0 || subPrice > MAX_BALANCE) return NextResponse.json({ error: "Invalid subscription price" }, { status: 400 });
+        await sql`
+          UPDATE businesses
+          SET subscription_price = ${subPrice},
+              billing_active = ${body.billing_active === true},
+              next_billing_date = ${body.next_billing_date || null}
+          WHERE id = ${businessId}
+        `;
+        await logAudit(adminId, "set_billing", businessId, {
           subscription_price: subPrice,
           billing_active: body.billing_active,
           next_billing_date: body.next_billing_date,
@@ -188,147 +129,99 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: "Invalid platform" }, { status: 400 });
         }
         if (!isValidPlatformId(body.platform, body.external_id)) {
-          return NextResponse.json(
-            { error: "Invalid external ID. Must be 3-100 characters, alphanumeric with dots, underscores, hyphens." },
-            { status: 400 }
-          );
+          return NextResponse.json({ error: "Invalid external ID" }, { status: 400 });
         }
-        const platformData: Record<string, unknown> = {
-          business_id: businessId,
-          platform: body.platform,
-          external_id: body.external_id.trim(),
-        };
-        // Optional self-service fields: page_id, page_name, page_access_token
-        if (body.page_id && typeof body.page_id === "string") {
-          platformData.page_id = body.page_id.trim();
-        }
-        if (body.page_name && typeof body.page_name === "string") {
-          platformData.page_name = body.page_name.trim();
-        }
-        if (body.page_access_token && typeof body.page_access_token === "string") {
-          platformData.page_access_token = body.page_access_token;
-        }
-        await adminClient.from("platform_accounts").upsert(platformData);
-        await logAudit(adminClient, user.id, "add_platform", businessId, {
-          platform: body.platform,
-          external_id: body.external_id.trim(),
-          page_id: body.page_id,
+        await sql`
+          INSERT INTO platform_accounts (business_id, platform, external_id, page_id, page_name, page_access_token)
+          VALUES (
+            ${businessId},
+            ${body.platform},
+            ${body.external_id.trim()},
+            ${body.page_id?.trim() ?? null},
+            ${body.page_name?.trim() ?? null},
+            ${body.page_access_token ?? null}
+          )
+          ON CONFLICT (platform, external_id) DO UPDATE SET
+            page_id = EXCLUDED.page_id,
+            page_name = EXCLUDED.page_name,
+            page_access_token = EXCLUDED.page_access_token
+        `;
+        await logAudit(adminId, "add_platform", businessId, {
+          platform: body.platform, external_id: body.external_id.trim(),
         });
         break;
       }
 
       case "setup_business": {
-        // Create a business for an existing user who registered but has no business
         const { userId, businessName, platforms, planType, monthlyTier, initialCredits, botPrompt } = body;
-        if (!userId || !businessName || typeof businessName !== "string" || businessName.trim().length < 1) {
+        if (!userId || !businessName?.trim()) {
           return NextResponse.json({ error: "userId and businessName required" }, { status: 400 });
         }
 
-        const { data: newBiz, error: bizErr } = await adminClient
-          .from("businesses")
-          .insert({
-            user_id: userId,
-            name: businessName.trim(),
-            platforms: platforms || [],
-            bot_prompt: botPrompt || "",
-            contact_phone: "",
-            contact_email: "",
-            status: "active",
-            onboarding_done: true,
-            onboarding_step: 5,
-          })
-          .select()
-          .single();
+        const [newBiz] = await sql`
+          INSERT INTO businesses (user_id, name, platforms, bot_prompt, contact_phone, contact_email, status, onboarding_done, onboarding_step)
+          VALUES (${userId}, ${businessName.trim()}, ${platforms || []}::text[], ${botPrompt || ""}, '', '', 'active', true, 5)
+          RETURNING id
+        `;
+        if (!newBiz) return NextResponse.json({ error: "Failed to create business" }, { status: 500 });
 
-        if (bizErr || !newBiz) {
-          return NextResponse.json({ error: bizErr?.message || "Failed to create business" }, { status: 500 });
-        }
-
-        // Create plan
         const mp = MONTHLY_PLANS.find((p) => p.tier === (monthlyTier || "basic"));
-        await adminClient.from("plans").insert({
-          business_id: newBiz.id,
-          plan_type: planType || "credit",
-          monthly_tier: planType === "monthly" ? (monthlyTier || "basic") : null,
-          monthly_message_limit:
-            planType === "monthly"
-              ? mp?.messageLimit === Infinity ? -1 : mp?.messageLimit || null
-              : null,
-          monthly_price: planType === "monthly" ? mp?.price || null : null,
-          billing_cycle_start: new Date().toISOString().split("T")[0],
-        });
+        await sql`
+          INSERT INTO plans (business_id, plan_type, monthly_tier, monthly_message_limit, monthly_price, billing_cycle_start)
+          VALUES (
+            ${newBiz.id as string},
+            ${planType || "credit"},
+            ${planType === "monthly" ? (monthlyTier || "basic") : null},
+            ${planType === "monthly" ? (mp?.messageLimit === Infinity ? -1 : mp?.messageLimit || null) : null},
+            ${planType === "monthly" ? mp?.price || null : null},
+            ${new Date().toISOString().split("T")[0]}
+          )
+        `;
 
-        // Create credits
         const initCredits = safeInt(initialCredits, MAX_CREDITS) || 0;
-        await adminClient.from("credits").insert({
-          business_id: newBiz.id,
-          balance: initCredits,
-          total_purchased: initCredits,
-        });
+        await sql`INSERT INTO credits (business_id, balance, total_purchased) VALUES (${newBiz.id as string}, ${initCredits}, ${initCredits})`;
 
-        await logAudit(adminClient, user.id, "setup_business", newBiz.id, {
-          userId,
-          businessName: businessName.trim(),
-          planType,
-          initialCredits: initCredits,
-        });
-
+        await logAudit(adminId, "setup_business", newBiz.id as string, { userId, businessName: businessName.trim() });
         return NextResponse.json({ success: true, businessId: newBiz.id });
       }
 
       case "update": {
-        await adminClient
-          .from("businesses")
-          .update({
-            name: body.name,
-            bot_prompt: body.bot_prompt,
-            contact_phone: body.contact_phone,
-            contact_email: body.contact_email,
-            status: body.status,
-          })
-          .eq("id", businessId);
+        await sql`
+          UPDATE businesses
+          SET name = ${body.name}, bot_prompt = ${body.bot_prompt},
+              contact_phone = ${body.contact_phone}, contact_email = ${body.contact_email},
+              status = ${body.status}
+          WHERE id = ${businessId}
+        `;
 
-        // Update plan
-        const { data: existingPlan } = await adminClient
-          .from("plans")
-          .select("id")
-          .eq("business_id", businessId)
-          .single();
-
+        const existingPlan = (await sql`SELECT id FROM plans WHERE business_id = ${businessId} LIMIT 1`)[0];
         const monthlyPlan = MONTHLY_PLANS.find((p) => p.tier === body.monthly_tier);
-        const planData = {
+        const planValues = {
           business_id: businessId,
           plan_type: body.plan_type,
           monthly_tier: body.plan_type === "monthly" ? body.monthly_tier : null,
-          monthly_message_limit:
-            body.plan_type === "monthly"
-              ? monthlyPlan?.messageLimit === Infinity
-                ? -1
-                : monthlyPlan?.messageLimit || null
-              : null,
-          monthly_price:
-            body.plan_type === "monthly" ? monthlyPlan?.price || null : null,
+          monthly_message_limit: body.plan_type === "monthly"
+            ? (monthlyPlan?.messageLimit === Infinity ? -1 : monthlyPlan?.messageLimit || null)
+            : null,
+          monthly_price: body.plan_type === "monthly" ? monthlyPlan?.price || null : null,
         };
 
         if (existingPlan) {
-          await adminClient.from("plans").update(planData).eq("id", existingPlan.id);
+          await sql`
+            UPDATE plans SET plan_type = ${planValues.plan_type}, monthly_tier = ${planValues.monthly_tier},
+            monthly_message_limit = ${planValues.monthly_message_limit}, monthly_price = ${planValues.monthly_price}
+            WHERE id = ${existingPlan.id as string}
+          `;
         } else {
-          await adminClient.from("plans").insert({
-            ...planData,
-            billing_cycle_start: new Date().toISOString().split("T")[0],
-          });
+          await sql`
+            INSERT INTO plans (business_id, plan_type, monthly_tier, monthly_message_limit, monthly_price, billing_cycle_start)
+            VALUES (${businessId}, ${planValues.plan_type}, ${planValues.monthly_tier}, ${planValues.monthly_message_limit}, ${planValues.monthly_price}, ${new Date().toISOString().split("T")[0]})
+          `;
         }
 
-        await logAudit(adminClient, user.id, "update", businessId, {
-          name: body.name,
-          status: body.status,
-          plan_type: body.plan_type,
-        });
+        await logAudit(adminId, "update", businessId, { name: body.name, status: body.status });
         break;
       }
-
-      default:
-        return NextResponse.json({ error: "Unknown action" }, { status: 400 });
     }
 
     return NextResponse.json({ success: true });

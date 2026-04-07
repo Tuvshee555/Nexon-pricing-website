@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/server";
+import { sql } from "@/lib/db";
 import { notifyPaymentReceived } from "@/lib/telegram";
 import { addCredits, addVirtualBalance } from "@/lib/credits";
 import { inferTransactionType } from "@/lib/transactions";
@@ -10,69 +10,54 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { payment_id, invoice_id, payment_status } = body;
 
-    if (payment_status !== "PAID") {
-      return NextResponse.json({ success: true });
-    }
+    if (payment_status !== "PAID") return NextResponse.json({ success: true });
 
-    const supabase = await createAdminClient();
-
-    // Find the transaction by invoice_id
-    const { data: tx } = await supabase
-      .from("transactions")
-      .select("*, businesses(name)")
-      .eq("qpay_invoice_id", invoice_id)
-      .single();
+    const txRows = await sql`
+      SELECT t.*, b.name as business_name
+      FROM transactions t
+      LEFT JOIN businesses b ON t.business_id = b.id
+      WHERE t.qpay_invoice_id = ${invoice_id} LIMIT 1
+    `;
+    const tx = txRows[0] ?? null;
 
     if (!tx) {
       console.error("QPay callback: no transaction found for invoice", invoice_id);
       return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
     }
 
-    // Idempotency: skip if already processed
-    if (tx.status === "paid") {
-      return NextResponse.json({ success: true, message: "Already processed" });
-    }
+    if (tx.status === "paid") return NextResponse.json({ success: true, message: "Already processed" });
 
-    // Verify payment with QPay API to prevent fake callbacks
     const verification = await checkPayment(invoice_id);
     if (!verification.count || verification.count === 0) {
       console.error("QPay callback: payment verification failed for invoice", invoice_id);
       return NextResponse.json({ error: "Payment verification failed" }, { status: 400 });
     }
 
-    const txType = inferTransactionType(tx);
-    const businessName = (tx.businesses as { name: string } | null)?.name || "Unknown";
+    const txType = inferTransactionType(tx as { transaction_type?: string; payment_method?: string; credits_added?: number; amount?: number });
+    const businessName = (tx.business_name as string) || "Unknown";
 
     if (txType === "topup") {
-      await addVirtualBalance(supabase, tx.business_id, tx.amount);
+      await addVirtualBalance(tx.business_id as string, tx.amount as number);
     } else {
-      await addCredits(supabase, tx.business_id, tx.credits_added);
+      await addCredits(tx.business_id as string, tx.credits_added as number);
     }
 
-    await supabase
-      .from("transactions")
-      .update({
-        status: "paid",
-        qpay_payment_id: payment_id,
-        paid_at: new Date().toISOString(),
-      })
-      .eq("id", tx.id);
+    await sql`
+      UPDATE transactions
+      SET status = 'paid', qpay_payment_id = ${payment_id}, paid_at = NOW()
+      WHERE id = ${tx.id as string}
+    `;
 
-    // Mark onboarding as complete and activate business if this was the first payment
-    const { data: biz } = await supabase
-      .from("businesses")
-      .select("onboarding_done")
-      .eq("id", tx.business_id)
-      .single();
-
-    if (biz && !biz.onboarding_done) {
-      await supabase
-        .from("businesses")
-        .update({ onboarding_done: true, onboarding_step: 5, status: "active" })
-        .eq("id", tx.business_id);
+    const bizRows = await sql`SELECT onboarding_done FROM businesses WHERE id = ${tx.business_id as string} LIMIT 1`;
+    if (bizRows[0] && !bizRows[0].onboarding_done) {
+      await sql`
+        UPDATE businesses
+        SET onboarding_done = true, onboarding_step = 5, status = 'active'
+        WHERE id = ${tx.business_id as string}
+      `;
     }
 
-    await notifyPaymentReceived(businessName, tx.amount, txType as "topup" | "message_pack");
+    await notifyPaymentReceived(businessName, tx.amount as number, txType as "topup" | "message_pack");
 
     return NextResponse.json({ success: true });
   } catch (err) {

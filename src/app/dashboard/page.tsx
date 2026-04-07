@@ -1,7 +1,10 @@
-import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/auth";
+import { sql } from "@/lib/db";
 import ClientDashboard from "@/components/dashboard/ClientDashboard";
 import { needsOnboarding } from "@/lib/onboarding";
+import type { Business, Plan, Credits, MessageLog } from "@/types";
 
 export default async function DashboardPage({
   searchParams,
@@ -10,97 +13,51 @@ export default async function DashboardPage({
 }) {
   const params = await searchParams;
 
-  // Auth is already checked by the layout — just get the user id
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const session = await getServerSession(authOptions);
+  if (!session) redirect("/login");
 
-  // Use admin client for all data fetching to bypass RLS
-  const adminClient = await createAdminClient();
+  const userId = session.user.id;
 
-  // Fetch business
-  const { data: business } = await adminClient
-    .from("businesses")
-    .select("*")
-    .eq("user_id", user.id)
-    .single();
+  const businesses = await sql`SELECT * FROM businesses WHERE user_id = ${userId}`;
+  const business = businesses[0] ?? null;
 
-  if (!business) {
+  if (!business) redirect("/dashboard/setup");
+
+  const platformAccounts = await sql`
+    SELECT page_id, external_id, page_access_token
+    FROM platform_accounts WHERE business_id = ${business.id as string}
+  `;
+
+  if (needsOnboarding(business, platformAccounts)) {
     redirect("/dashboard/setup");
   }
 
-  const { data: platformAccounts } = await adminClient
-    .from("platform_accounts")
-    .select("page_id, external_id, page_access_token")
-    .eq("business_id", business.id);
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
 
-  if (needsOnboarding(business, platformAccounts || [])) {
-    redirect("/dashboard/setup");
-  }
-
-  // Fetch plan, credits, logs in parallel
-  const [
-    { data: plan },
-    { data: credits },
-    { data: logs },
-    { data: monthlyLogs },
-    { data: recentTransactions },
-  ] = await Promise.all([
-    adminClient
-      .from("plans")
-      .select("*")
-      .eq("business_id", business.id)
-      .single(),
-
-    adminClient
-      .from("credits")
-      .select("*")
-      .eq("business_id", business.id)
-      .single(),
-
-    adminClient
-      .from("message_logs")
-      .select("*")
-      .eq("business_id", business.id)
-      .order("logged_at", { ascending: false })
-      .limit(10),
-
-    (() => {
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      startOfMonth.setHours(0, 0, 0, 0);
-      return adminClient
-        .from("message_logs")
-        .select("message_count, credits_used")
-        .eq("business_id", business.id)
-        .gte("logged_at", startOfMonth.toISOString());
-    })(),
-
-    adminClient
-      .from("transactions")
-      .select("*")
-      .eq("business_id", business.id)
-      .eq("status", "paid")
-      .order("paid_at", { ascending: false })
-      .limit(5),
+  const [plans, credits, logs, monthlyLogs, recentTransactions] = await Promise.all([
+    sql`SELECT * FROM plans WHERE business_id = ${business.id as string} LIMIT 1`,
+    sql`SELECT * FROM credits WHERE business_id = ${business.id as string} LIMIT 1`,
+    sql`SELECT * FROM message_logs WHERE business_id = ${business.id as string} ORDER BY logged_at DESC LIMIT 10`,
+    sql`SELECT message_count, credits_used FROM message_logs WHERE business_id = ${business.id as string} AND logged_at >= ${startOfMonth.toISOString()}`,
+    sql`SELECT * FROM transactions WHERE business_id = ${business.id as string} AND status = 'paid' ORDER BY paid_at DESC LIMIT 5`,
   ]);
 
-  const messagesThisMonth =
-    monthlyLogs?.reduce((sum, l) => sum + l.message_count, 0) || 0;
-  const creditsUsedThisMonth =
-    monthlyLogs?.reduce((sum, l) => sum + l.credits_used, 0) || 0;
+  const plan = plans[0] ?? null;
+  const credit = credits[0] ?? null;
+  const messagesThisMonth = monthlyLogs.reduce((sum, l) => sum + (l.message_count as number), 0);
+  const creditsUsedThisMonth = monthlyLogs.reduce((sum, l) => sum + (l.credits_used as number), 0);
 
   return (
     <ClientDashboard
-      business={business}
-      plan={plan}
-      credits={credits}
-      logs={logs || []}
+      business={business as unknown as Business}
+      plan={plan as unknown as Plan | null}
+      credits={credit as unknown as Credits | null}
+      logs={logs as unknown as MessageLog[]}
       messagesThisMonth={messagesThisMonth}
       creditsUsedThisMonth={creditsUsedThisMonth}
-      recentTransactions={recentTransactions || []}
+      recentTransactions={recentTransactions as unknown as { id: string; amount: number; credits_added: number; transaction_type?: string; status: string; paid_at?: string }[]}
       showWelcome={!!params.welcome}
     />
   );

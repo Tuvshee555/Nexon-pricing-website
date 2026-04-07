@@ -1,4 +1,4 @@
-import { createAdminClient } from "@/lib/supabase/server";
+import { sql } from "@/lib/db";
 import { redirect } from "next/navigation";
 import SetupBusinessForm from "./SetupBusinessForm";
 
@@ -8,26 +8,13 @@ export default async function SetupBusinessPage({
   params: Promise<{ userId: string }>;
 }) {
   const { userId } = await params;
-  const adminClient = await createAdminClient();
 
-  // Check if this user already has a business
-  const { data: existing } = await adminClient
-    .from("businesses")
-    .select("id")
-    .eq("user_id", userId)
-    .single();
-
-  // If business exists, redirect to its detail page
-  if (existing) {
-    redirect(`/admin/clients/${existing.id}`);
+  const existing = await sql`SELECT id FROM businesses WHERE user_id = ${userId} LIMIT 1`;
+  if (existing[0]) {
+    redirect(`/admin/clients/${existing[0].id as string}`);
   }
 
-  // Get user email for display
-  const { data: userData } = await adminClient
-    .from("users")
-    .select("email")
-    .eq("id", userId)
-    .single();
+  const userRows = await sql`SELECT email FROM users WHERE id = ${userId} LIMIT 1`;
 
-  return <SetupBusinessForm userId={userId} email={userData?.email || ""} />;
+  return <SetupBusinessForm userId={userId} email={(userRows[0]?.email as string) || ""} />;
 }

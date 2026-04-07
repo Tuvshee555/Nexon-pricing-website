@@ -3,22 +3,20 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import type { User } from "@supabase/supabase-js";
+import { signOut } from "next-auth/react";
 
 interface Props {
-  user: User;
+  user: { email?: string | null; name?: string | null };
   role: string;
 }
 
 export default function DashboardSidebar({ user, role }: Props) {
   const pathname = usePathname();
   const router = useRouter();
-  const supabase = createClient();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await signOut({ redirect: false });
     router.push("/");
     router.refresh();
   };
@@ -79,7 +77,6 @@ export default function DashboardSidebar({ user, role }: Props) {
 
   const SidebarContent = () => (
     <>
-      {/* Logo */}
       <div className="p-6 border-b border-border">
         <Link href="/" className="flex items-center gap-2">
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
@@ -89,7 +86,6 @@ export default function DashboardSidebar({ user, role }: Props) {
         </Link>
       </div>
 
-      {/* Nav links */}
       <nav className="flex-1 p-4 space-y-1">
         {links.map((link) => (
           <Link
@@ -107,15 +103,14 @@ export default function DashboardSidebar({ user, role }: Props) {
         ))}
       </nav>
 
-      {/* User info + logout */}
       <div className="p-4 border-t border-border">
         <div className="flex items-center gap-3 mb-3">
           <div className="w-8 h-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-sm font-bold text-primary">
-            {user.email?.[0]?.toUpperCase()}
+            {(user.email || user.name || "?")[0]?.toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-text-primary truncate">
-              {user.email}
+              {user.email || user.name}
             </p>
             <p className="text-xs text-muted capitalize">{role}</p>
           </div>
@@ -135,12 +130,10 @@ export default function DashboardSidebar({ user, role }: Props) {
 
   return (
     <>
-      {/* Desktop sidebar */}
       <aside className="hidden lg:flex lg:fixed lg:inset-y-0 lg:left-0 lg:w-64 flex-col bg-surface border-r border-border z-40">
         <SidebarContent />
       </aside>
 
-      {/* Mobile toggle */}
       <button
         className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-surface border border-border rounded-lg text-text-secondary"
         onClick={() => setMobileOpen(!mobileOpen)}
@@ -150,7 +143,6 @@ export default function DashboardSidebar({ user, role }: Props) {
         </svg>
       </button>
 
-      {/* Mobile sidebar */}
       {mobileOpen && (
         <>
           <div

@@ -1,127 +1,73 @@
 import { NextResponse } from "next/server";
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/auth";
+import { sql } from "@/lib/db";
 import { MONTHLY_PLANS } from "@/types";
 import { insertTransaction } from "@/lib/transactions";
+import bcrypt from "bcryptjs";
 
 export async function POST(request: Request) {
   try {
-    // Read body FIRST before cookies() is accessed
     const {
-      email,
-      password,
-      businessName,
-      platforms,
-      planType,
-      monthlyTier,
-      initialCredits,
-      botPrompt,
-      contactPhone,
-      contactEmail,
+      email, password, businessName, platforms, planType, monthlyTier,
+      initialCredits, botPrompt, contactPhone, contactEmail,
     } = await request.json();
 
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (session.user.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const adminClient = await createAdminClient();
-
-    const { data: userData } = await adminClient
-      .from("users")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    if (userData?.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    // Check if email already exists
+    const existing = await sql`SELECT id FROM users WHERE email = ${email.toLowerCase()} LIMIT 1`;
+    if (existing[0]) {
+      return NextResponse.json({ error: "Email already registered" }, { status: 400 });
     }
 
-    // Create auth user
-    const { data: authData, error: authError } =
-      await adminClient.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-        user_metadata: { role: "client" },
-      });
+    const passwordHash = await bcrypt.hash(password, 10);
 
-    if (authError || !authData.user) {
-      return NextResponse.json(
-        { error: authError?.message || "Failed to create user" },
-        { status: 400 }
-      );
-    }
+    const [newUser] = await sql`
+      INSERT INTO users (email, password_hash, role)
+      VALUES (${email.toLowerCase()}, ${passwordHash}, 'client')
+      RETURNING id
+    `;
+    if (!newUser) return NextResponse.json({ error: "Failed to create user" }, { status: 400 });
 
-    const newUserId = authData.user.id;
+    const newUserId = newUser.id as string;
 
-    // Ensure user record exists
-    await adminClient.from("users").upsert({
-      id: newUserId,
-      email,
-      role: "client",
-    });
+    const [business] = await sql`
+      INSERT INTO businesses (user_id, name, platforms, bot_prompt, contact_phone, contact_email, status, onboarding_done, onboarding_step)
+      VALUES (${newUserId}, ${businessName}, ${platforms || []}::text[], ${botPrompt || ""}, ${contactPhone || ""}, ${contactEmail || ""}, 'active', true, 5)
+      RETURNING id
+    `;
+    if (!business) return NextResponse.json({ error: "Failed to create business" }, { status: 500 });
 
-    // Create business
-    const { data: business, error: bizError } = await adminClient
-      .from("businesses")
-      .insert({
-        user_id: newUserId,
-        name: businessName,
-        platforms: platforms || [],
-        bot_prompt: botPrompt || "",
-        contact_phone: contactPhone || "",
-        contact_email: contactEmail || "",
-        status: "active",
-      })
-      .select()
-      .single();
-
-    if (bizError || !business) {
-      return NextResponse.json(
-        { error: "Failed to create business" },
-        { status: 500 }
-      );
-    }
-
-    // Create plan
+    const businessId = business.id as string;
     const monthlyPlan = MONTHLY_PLANS.find((p) => p.tier === monthlyTier);
-    await adminClient.from("plans").insert({
-      business_id: business.id,
-      plan_type: planType,
-      monthly_tier: planType === "monthly" ? monthlyTier : null,
-      monthly_message_limit:
-        planType === "monthly"
-          ? monthlyPlan?.messageLimit === Infinity
-            ? -1
-            : monthlyPlan?.messageLimit || null
-          : null,
-      monthly_price: planType === "monthly" ? monthlyPlan?.price || null : null,
-      billing_cycle_start: new Date().toISOString().split("T")[0],
-    });
 
-    // Create credits
+    await sql`
+      INSERT INTO plans (business_id, plan_type, monthly_tier, monthly_message_limit, monthly_price, billing_cycle_start)
+      VALUES (
+        ${businessId},
+        ${planType},
+        ${planType === "monthly" ? monthlyTier : null},
+        ${planType === "monthly" ? (monthlyPlan?.messageLimit === Infinity ? -1 : monthlyPlan?.messageLimit || null) : null},
+        ${planType === "monthly" ? monthlyPlan?.price || null : null},
+        ${new Date().toISOString().split("T")[0]}
+      )
+    `;
+
     const credits = parseInt(initialCredits) || 0;
-    await adminClient.from("credits").insert({
-      business_id: business.id,
-      balance: credits,
-      total_purchased: credits,
-    });
+    await sql`INSERT INTO credits (business_id, balance, total_purchased) VALUES (${businessId}, ${credits}, ${credits})`;
 
     if (credits > 0) {
-      await insertTransaction(adminClient, {
-        business_id: business.id,
-        amount: 0,
-        credits_added: credits,
-        payment_method: "manual",
-        status: "paid",
-        paid_at: new Date().toISOString(),
-        transaction_type: "manual",
+      await insertTransaction({
+        business_id: businessId, amount: 0, credits_added: credits,
+        payment_method: "manual", status: "paid",
+        paid_at: new Date().toISOString(), transaction_type: "manual",
       });
     }
 
-    return NextResponse.json({ businessId: business.id });
+    return NextResponse.json({ businessId });
   } catch (err) {
     console.error("Create client error:", err);
     return NextResponse.json({ error: String(err) }, { status: 500 });

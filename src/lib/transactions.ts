@@ -1,4 +1,4 @@
-import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
+import { sql } from "@/lib/db";
 
 export type TransactionKind = "topup" | "subscription" | "message_pack" | "manual";
 
@@ -21,39 +21,37 @@ interface TransactionLike {
   transaction_type?: string | null;
 }
 
-export async function insertTransaction(
-  supabase: SupabaseClient,
-  transaction: TransactionInsertData
-) {
-  const { error } = await supabase.from("transactions").insert(transaction);
-
-  if (!error || !transaction.transaction_type || !isMissingTransactionTypeColumnError(error)) {
-    return { error };
-  }
-
-  const legacyTransaction = { ...transaction };
-  delete legacyTransaction.transaction_type;
-  return supabase.from("transactions").insert(legacyTransaction);
+export async function insertTransaction(transaction: TransactionInsertData) {
+  await sql`
+    INSERT INTO transactions (
+      business_id, amount, credits_added, payment_method,
+      qpay_invoice_id, qpay_payment_id, status, transaction_type, paid_at
+    ) VALUES (
+      ${transaction.business_id},
+      ${transaction.amount},
+      ${transaction.credits_added},
+      ${transaction.payment_method},
+      ${transaction.qpay_invoice_id ?? null},
+      ${transaction.qpay_payment_id ?? null},
+      ${transaction.status},
+      ${transaction.transaction_type ?? null},
+      ${transaction.paid_at ?? null}
+    )
+  `;
+  return { error: null };
 }
 
 export function inferTransactionType(transaction: TransactionLike): TransactionKind {
   if (isTransactionKind(transaction.transaction_type)) {
     return transaction.transaction_type;
   }
-
   if (transaction.payment_method === "qpay") {
     return (transaction.credits_added || 0) > 0 ? "message_pack" : "topup";
   }
-
   if ((transaction.amount || 0) > 0) {
     return "topup";
   }
-
   return "manual";
-}
-
-function isMissingTransactionTypeColumnError(error: PostgrestError) {
-  return error.code === "PGRST204" && error.message.includes("transaction_type");
 }
 
 function isTransactionKind(value: string | null | undefined): value is TransactionKind {

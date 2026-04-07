@@ -1,39 +1,34 @@
-import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/auth";
+import { sql } from "@/lib/db";
 import BuyCreditsClient from "@/components/dashboard/BuyCreditsClient";
 
 export default async function BuyCreditsPage() {
-  // Auth is already checked by the dashboard layout — just get user id
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const session = await getServerSession(authOptions);
+  if (!session) redirect("/login");
 
-  // Use admin client for data fetch to bypass RLS
-  const adminClient = await createAdminClient();
+  const userId = session.user.id;
 
-  const { data: business } = await adminClient
-    .from("businesses")
-    .select("id, name, virtual_balance, subscription_price")
-    .eq("user_id", user.id)
-    .single();
-
+  const businesses = await sql`
+    SELECT id, name, virtual_balance, subscription_price
+    FROM businesses WHERE user_id = ${userId} LIMIT 1
+  `;
+  const business = businesses[0] ?? null;
   if (!business) redirect("/dashboard");
 
-  const { data: plan } = await adminClient
-    .from("plans")
-    .select("plan_type")
-    .eq("business_id", business.id)
-    .single();
+  const plans = await sql`
+    SELECT plan_type FROM plans WHERE business_id = ${business.id as string} LIMIT 1
+  `;
+  const plan = plans[0] ?? null;
 
   return (
     <BuyCreditsClient
-      businessId={business.id}
-      businessName={business.name}
-      planType={plan?.plan_type || "credit"}
-      virtualBalance={business.virtual_balance || 0}
-      subscriptionPrice={business.subscription_price || 0}
+      businessId={business.id as string}
+      businessName={business.name as string}
+      planType={(plan?.plan_type as string) || "credit"}
+      virtualBalance={(business.virtual_balance as number) || 0}
+      subscriptionPrice={(business.subscription_price as number) || 0}
     />
   );
 }

@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 import { createHmac } from "crypto";
-import { createAdminClient } from "@/lib/supabase/server";
+import { sql } from "@/lib/db";
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN!;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY!;
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
-// ─── GET: Facebook webhook verification ──────────────────────────────────────
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const mode = searchParams.get("hub.mode");
@@ -16,25 +15,18 @@ export async function GET(request: Request) {
   if (mode === "subscribe" && token === VERIFY_TOKEN) {
     return new Response(challenge, { status: 200 });
   }
-
   return new Response("Forbidden", { status: 403 });
 }
 
-// ─── POST: Receive messages ───────────────────────────────────────────────────
 export async function POST(request: Request) {
   try {
-    // Read raw body for signature verification
     const rawBody = await request.text();
     const appSecret = process.env.FACEBOOK_APP_SECRET;
     if (appSecret) {
       const signature = request.headers.get("x-hub-signature-256");
-      if (!signature) {
-        return NextResponse.json({ error: "Missing signature" }, { status: 403 });
-      }
+      if (!signature) return NextResponse.json({ error: "Missing signature" }, { status: 403 });
       const expected = "sha256=" + createHmac("sha256", appSecret).update(rawBody).digest("hex");
-      if (signature !== expected) {
-        return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
-      }
+      if (signature !== expected) return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
     }
     const body = JSON.parse(rawBody);
 
@@ -42,113 +34,74 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Not a page event" }, { status: 200 });
     }
 
-    const supabase = await createAdminClient();
-
     for (const entry of body.entry || []) {
       const messaging = entry.messaging || entry.changes?.[0]?.value?.messages;
-
       if (!messaging) continue;
 
-      // entry.id is the Facebook Page ID that received the message.
-      // Look up the platform_accounts row by page_id to find the business
-      // and retrieve the per-business page access token.
       const pageId = entry.id as string;
 
-      const { data: pageAccount } = await supabase
-        .from("platform_accounts")
-        .select("business_id, page_access_token")
-        .eq("page_id", pageId)
-        .maybeSingle();
+      const pageAccounts = await sql`
+        SELECT business_id, page_access_token FROM platform_accounts WHERE page_id = ${pageId} LIMIT 1
+      `;
+      const pageAccount = pageAccounts[0] ?? null;
 
-      // Per-business token (self-service) OR legacy env var fallback
       const pageAccessToken: string | undefined =
-        pageAccount?.page_access_token ?? process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
+        (pageAccount?.page_access_token as string | undefined) ?? process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
 
       for (const event of messaging) {
-        // Determine platform
         const platform = body.object === "instagram" ? "instagram" : "messenger";
-
-        // Get sender ID
         const senderId = event.sender?.id || event.from?.id;
         if (!senderId) continue;
 
-        // Skip if no message text
         const messageText = event.message?.text || event.text;
         if (!messageText) continue;
 
-        // Resolve business_id: prefer the page_id lookup above, fall back to
-        // legacy sender-based lookup for admin-configured businesses.
-        let businessId: string | null = pageAccount?.business_id ?? null;
+        let businessId: string | null = (pageAccount?.business_id as string) ?? null;
 
         if (!businessId) {
-          const { data: senderAccount } = await supabase
-            .from("platform_accounts")
-            .select("business_id")
-            .eq("platform", platform)
-            .eq("external_id", senderId)
-            .maybeSingle();
-          businessId = senderAccount?.business_id ?? null;
+          const senderAccounts = await sql`
+            SELECT business_id FROM platform_accounts
+            WHERE platform = ${platform} AND external_id = ${senderId} LIMIT 1
+          `;
+          businessId = (senderAccounts[0]?.business_id as string) ?? null;
         }
 
         if (!businessId) continue;
 
-        // Get business info
-        const { data: business } = await supabase
-          .from("businesses")
-          .select("bot_prompt, bot_name, welcome_message, status")
-          .eq("id", businessId)
-          .single();
-
+        const businesses = await sql`
+          SELECT bot_prompt, bot_name, welcome_message, status FROM businesses WHERE id = ${businessId} LIMIT 1
+        `;
+        const business = businesses[0] ?? null;
         if (!business || business.status !== "active") continue;
 
-        // Check credits
-        const { data: credits } = await supabase
-          .from("credits")
-          .select("balance")
-          .eq("business_id", businessId)
-          .single();
+        const creditsRows = await sql`SELECT balance FROM credits WHERE business_id = ${businessId} LIMIT 1`;
+        const credits = creditsRows[0] ?? null;
 
-        if (!credits || credits.balance <= 0) {
+        if (!credits || (credits.balance as number) <= 0) {
           if (pageAccessToken) {
             await sendFacebookMessage(senderId, "Таны кредит дууссан байна. Nexon хяналтын самбараас кредит нэмнэ үү.", platform, pageAccessToken);
           }
           continue;
         }
 
-        // Build conversation history for context
-        const { data: thread } = await supabase
-          .from("conversation_threads")
-          .select("messages")
-          .eq("business_id", businessId)
-          .eq("platform", platform)
-          .eq("sender_id", senderId)
-          .maybeSingle();
-
-        const history: Array<{ role: string; content: string }> = Array.isArray(thread?.messages)
-          ? (thread.messages as Array<{ role: string; content: string }>).slice(-10)
+        const threads = await sql`
+          SELECT messages FROM conversation_threads
+          WHERE business_id = ${businessId} AND platform = ${platform} AND sender_id = ${senderId} LIMIT 1
+        `;
+        const history: Array<{ role: string; content: string }> = Array.isArray(threads[0]?.messages)
+          ? (threads[0].messages as Array<{ role: string; content: string }>).slice(-10)
           : [];
 
-        // Call OpenAI
         const openaiMessages = [
-          {
-            role: "system",
-            content: business.bot_prompt || "Та туслах AI байна.",
-          },
+          { role: "system", content: (business.bot_prompt as string) || "Та туслах AI байна." },
           ...history,
           { role: "user", content: messageText },
         ];
 
         const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${OPENAI_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: OPENAI_MODEL,
-            messages: openaiMessages,
-            max_tokens: 500,
-          }),
+          headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ model: OPENAI_MODEL, messages: openaiMessages, max_tokens: 500 }),
         });
 
         if (!openaiRes.ok) {
@@ -159,68 +112,36 @@ export async function POST(request: Request) {
         const openaiData = await openaiRes.json();
         const reply = openaiData.choices?.[0]?.message?.content || "";
         const usage = openaiData.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
-
-        // Calculate credits used (ceil total_tokens / 1000, min 1)
         const creditsUsed = Math.max(1, Math.ceil(usage.total_tokens / 1000));
 
-        // Re-fetch credits to avoid race (use row-level update)
-        const { data: curCredits } = await supabase
-          .from("credits")
-          .select("balance")
-          .eq("business_id", businessId)
-          .single();
+        // Atomic credit deduction
+        const deducted = await sql`
+          UPDATE credits SET balance = balance - ${creditsUsed}
+          WHERE business_id = ${businessId} AND balance >= ${creditsUsed}
+          RETURNING balance
+        `;
+        if (!deducted.length) continue;
 
-        if (!curCredits || curCredits.balance < creditsUsed) {
-          if (pageAccessToken) {
-            await sendFacebookMessage(senderId, "Таны мессеж дууссан байна. Nexon хяналтын самбараас мессеж нэмнэ үү.", platform, pageAccessToken);
-          }
-          continue;
-        }
+        await sql`
+          INSERT INTO message_logs (business_id, platform, message_count, prompt_tokens, completion_tokens, total_tokens, credits_used, source)
+          VALUES (${businessId}, ${platform}, 1, ${usage.prompt_tokens}, ${usage.completion_tokens}, ${usage.total_tokens}, ${creditsUsed}, 'api')
+        `;
 
-        // Atomic deduction: only succeeds if balance is still sufficient
-        const { data: deducted } = await supabase
-          .from("credits")
-          .update({ balance: curCredits.balance - creditsUsed })
-          .eq("business_id", businessId)
-          .gte("balance", creditsUsed)
-          .select("balance");
-
-        if (!deducted?.length) continue; // Race: another message already consumed credits
-
-        // Log message
-        await supabase.from("message_logs").insert({
-          business_id: businessId,
-          platform,
-          message_count: 1,
-          prompt_tokens: usage.prompt_tokens,
-          completion_tokens: usage.completion_tokens,
-          total_tokens: usage.total_tokens,
-          credits_used: creditsUsed,
-          source: "api",
-        });
-
-        // Update conversation thread
         const updatedMessages = [
           ...history,
           { role: "user", content: messageText },
           { role: "assistant", content: reply },
-        ].slice(-20); // Keep last 20 messages
+        ].slice(-20);
 
-        await supabase
-          .from("conversation_threads")
-          .upsert({
-            business_id: businessId,
-            platform,
-            sender_id: senderId,
-            messages: updatedMessages,
-            last_message_at: new Date().toISOString(),
-          }, { onConflict: "business_id,platform,sender_id" });
+        await sql`
+          INSERT INTO conversation_threads (business_id, platform, sender_id, messages, last_message_at)
+          VALUES (${businessId}, ${platform}, ${senderId}, ${JSON.stringify(updatedMessages)}, NOW())
+          ON CONFLICT (business_id, platform, sender_id)
+          DO UPDATE SET messages = ${JSON.stringify(updatedMessages)}, last_message_at = NOW()
+        `;
 
-        // Send reply
         if (pageAccessToken) {
           await sendFacebookMessage(senderId, reply, platform, pageAccessToken);
-        } else {
-          console.warn("No page access token available for business", businessId);
         }
       }
     }
@@ -228,7 +149,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err) {
     console.error("Webhook error:", err);
-    // Always return 200 to Facebook
     return NextResponse.json({ success: true }, { status: 200 });
   }
 }
@@ -239,13 +159,9 @@ async function sendFacebookMessage(
   platform: string,
   pageAccessToken: string
 ): Promise<void> {
-  const endpoint =
-    platform === "instagram"
-      ? `https://graph.facebook.com/v19.0/me/messages`
-      : `https://graph.facebook.com/v19.0/me/messages`;
-
+  void platform;
   try {
-    const res = await fetch(`${endpoint}?access_token=${pageAccessToken}`, {
+    const res = await fetch(`https://graph.facebook.com/v19.0/me/messages?access_token=${pageAccessToken}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -254,10 +170,7 @@ async function sendFacebookMessage(
         messaging_type: "RESPONSE",
       }),
     });
-
-    if (!res.ok) {
-      console.error("FB send error:", await res.text());
-    }
+    if (!res.ok) console.error("FB send error:", await res.text());
   } catch (err) {
     console.error("FB send failed:", err);
   }

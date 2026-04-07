@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/auth";
 import {
   exchangeCodeForShortToken,
   exchangeForLongLivedToken,
@@ -18,7 +19,6 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${appUrl}/dashboard/setup?step=2&error=fb_denied`);
   }
 
-  // Validate CSRF
   const cookieNonce = request.headers
     .get("cookie")
     ?.split(";")
@@ -37,38 +37,28 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${appUrl}/dashboard/setup?step=2&error=csrf`);
   }
 
-  // Verify the session user matches state
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.id !== stateData.userId) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user || session.user.id !== stateData.userId) {
     return NextResponse.redirect(`${appUrl}/dashboard/setup?step=2&error=auth`);
   }
 
   try {
     const redirectUri = `${appUrl}/api/facebook/callback`;
-
-    // Exchange code → short-lived token → long-lived user token
     const shortToken = await exchangeCodeForShortToken(code, redirectUri);
     const longToken = await exchangeForLongLivedToken(shortToken);
-
-    // Fetch user's pages (each page has its own long-lived page token)
     const pages = await getUserPages(longToken);
 
-    // Store pages in a short-lived httpOnly cookie (base64 JSON, 10 min TTL)
     const pagesPayload = Buffer.from(JSON.stringify(pages)).toString("base64");
-
     const redirectUrl = `${appUrl}/dashboard/setup?step=2&fb_connected=1&businessId=${stateData.businessId}`;
     const response = NextResponse.redirect(redirectUrl);
 
     response.cookies.set("fb_pages", pagesPayload, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      maxAge: 600, // 10 minutes to complete the step
+      maxAge: 600,
       sameSite: "lax",
       path: "/",
     });
-
-    // Clear the nonce cookie
     response.cookies.set("fb_oauth_nonce", "", { maxAge: 0, path: "/" });
 
     return response;

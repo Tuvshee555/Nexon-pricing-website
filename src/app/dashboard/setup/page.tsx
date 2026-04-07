@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/auth";
+import { sql } from "@/lib/db";
 import OnboardingWizard from "@/components/dashboard/setup/OnboardingWizard";
 import { getOnboardingStartStep, needsOnboarding } from "@/lib/onboarding";
 
@@ -12,30 +14,30 @@ export default async function SetupPage({
 }) {
   const params = await searchParams;
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const session = await getServerSession(authOptions);
+  if (!session) redirect("/login");
 
-  const adminClient = await createAdminClient();
-  const { data: business } = await adminClient
-    .from("businesses")
-    .select("id, onboarding_done, onboarding_step, name, bot_name, bot_prompt, welcome_message, bot_tone, business_type, status, platforms")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const userId = session.user.id;
 
-  const { data: platformAccounts } = business
-    ? await adminClient
-        .from("platform_accounts")
-        .select("page_id, external_id, page_access_token")
-        .eq("business_id", business.id)
-    : { data: [] };
+  const businesses = await sql`
+    SELECT id, onboarding_done, onboarding_step, name, bot_name, bot_prompt,
+           welcome_message, bot_tone, business_type, status, platforms
+    FROM businesses WHERE user_id = ${userId}
+  `;
+  const business = businesses[0] ?? null;
 
-  // If onboarding is complete, redirect to dashboard
-  if (!needsOnboarding(business, platformAccounts || [])) {
+  const platformAccounts = business
+    ? await sql`
+        SELECT page_id, external_id, page_access_token
+        FROM platform_accounts WHERE business_id = ${business.id as string}
+      `
+    : [];
+
+  if (!needsOnboarding(business, platformAccounts)) {
     redirect("/dashboard");
   }
 
-  const resumeStep = getOnboardingStartStep(business, platformAccounts || []);
+  const resumeStep = getOnboardingStartStep(business, platformAccounts);
 
   return (
     <OnboardingWizard

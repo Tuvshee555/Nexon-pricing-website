@@ -1,62 +1,41 @@
 import { NextResponse } from "next/server";
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/auth";
+import { sql } from "@/lib/db";
 import { createInvoice } from "@/lib/qpay";
 import { insertTransaction } from "@/lib/transactions";
 
 export async function POST(request: Request) {
   try {
-    // Read body FIRST before cookies() is accessed
     const { businessId, amount, credits, type = "message_pack" } = await request.json();
 
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const userId = session.user.id;
 
     if (!businessId || !amount) {
       return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
     }
-
     if (type === "message_pack" && !credits) {
       return NextResponse.json({ error: "Credits required for message pack" }, { status: 400 });
     }
 
-    // Use admin client for all DB operations to bypass RLS
-    const adminClient = await createAdminClient();
-
-    // Verify business belongs to user
-    const { data: business } = await adminClient
-      .from("businesses")
-      .select("id")
-      .eq("id", businessId)
-      .eq("user_id", user.id)
-      .single();
-
-    if (!business) {
-      return NextResponse.json({ error: "Business not found" }, { status: 404 });
-    }
+    const businesses = await sql`
+      SELECT id FROM businesses WHERE id = ${businessId} AND user_id = ${userId} LIMIT 1
+    `;
+    if (!businesses[0]) return NextResponse.json({ error: "Business not found" }, { status: 404 });
 
     const senderInvoiceNo = `NEXON-${Date.now()}-${businessId.slice(0, 8)}`;
     const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/qpay/callback`;
-
     const description =
       type === "topup"
         ? `Nexon үлдэгдэл нэмэх: ${amount.toLocaleString()}₮`
         : `Nexon мессеж пакет: ${credits} мессеж`;
 
-    const invoice = await createInvoice({
-      amount,
-      description,
-      callbackUrl,
-      senderInvoiceNo,
-    });
+    const invoice = await createInvoice({ amount, description, callbackUrl, senderInvoiceNo });
 
-    // Create pending transaction using admin client
-    const { error: txError } = await insertTransaction(adminClient, {
+    await insertTransaction({
       business_id: businessId,
       amount,
       credits_added: type === "message_pack" ? credits : 0,
@@ -65,11 +44,6 @@ export async function POST(request: Request) {
       status: "pending",
       transaction_type: type,
     });
-
-    if (txError) {
-      console.error("Transaction insert error:", txError);
-      return NextResponse.json({ error: "Failed to create transaction" }, { status: 500 });
-    }
 
     return NextResponse.json(invoice);
   } catch (err: unknown) {

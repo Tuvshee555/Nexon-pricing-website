@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/auth";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 
 export const dynamic = "force-dynamic";
@@ -9,27 +10,14 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
+  const session = await getServerSession(authOptions);
+  if (!session) redirect("/login");
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
-
-  // Use admin client for role check to bypass RLS
-  const adminClient = await createAdminClient();
-  const { data: userData } = await adminClient
-    .from("users")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (userData?.role !== "admin") redirect("/dashboard");
+  if (session.user.role !== "admin") redirect("/dashboard");
 
   return (
     <div className="min-h-screen bg-background flex">
-      <DashboardSidebar user={user} role="admin" />
+      <DashboardSidebar user={{ email: session.user.email, name: session.user.name }} role="admin" />
       <main className="flex-1 lg:ml-64 p-6">{children}</main>
     </div>
   );
