@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createHmac } from "crypto";
 import { createAdminClient } from "@/lib/supabase/server";
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN!;
@@ -22,23 +23,20 @@ export async function GET(request: Request) {
 // ─── POST: Receive messages ───────────────────────────────────────────────────
 export async function POST(request: Request) {
   try {
-    // Verify Facebook webhook signature
+    // Read raw body for signature verification
+    const rawBody = await request.text();
     const appSecret = process.env.FACEBOOK_APP_SECRET;
     if (appSecret) {
       const signature = request.headers.get("x-hub-signature-256");
-      const rawBody = await request.text();
       if (!signature) {
         return NextResponse.json({ error: "Missing signature" }, { status: 403 });
       }
-      const { createHmac } = await import("crypto");
       const expected = "sha256=" + createHmac("sha256", appSecret).update(rawBody).digest("hex");
       if (signature !== expected) {
         return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
       }
-      var body = JSON.parse(rawBody);
-    } else {
-      var body = await request.json();
     }
+    const body = JSON.parse(rawBody);
 
     if (body.object !== "page" && body.object !== "instagram") {
       return NextResponse.json({ error: "Not a page event" }, { status: 200 });

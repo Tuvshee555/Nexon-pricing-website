@@ -175,12 +175,7 @@ export default function AdminClientsList({ clients }: { clients: Client[] }) {
                         Харах
                       </Link>
                     ) : (
-                      <Link
-                        href={`/admin/clients/setup/${client.userId}`}
-                        className="text-accent hover:text-accent/80 text-xs font-semibold border border-accent/30 px-3 py-1.5 rounded-lg transition-colors"
-                      >
-                        Тохируулах
-                      </Link>
+                      <span className="text-xs text-muted italic">Онбординг хийж байна</span>
                     )}
                   </td>
                 </tr>
