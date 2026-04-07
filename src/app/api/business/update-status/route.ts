@@ -26,9 +26,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Business not found" }, { status: 404 });
   }
 
+  // When activating, also mark onboarding as done
+  const updatePayload: Record<string, unknown> = { status };
+  if (status === "active") {
+    updatePayload.onboarding_done = true;
+    updatePayload.onboarding_step = 5;
+  }
+
   await adminClient
     .from("businesses")
-    .update({ status })
+    .update(updatePayload)
     .eq("id", business.id);
 
   return NextResponse.json({ success: true });
