@@ -36,6 +36,7 @@ export default function Step5Plan({
   const [payState, setPayState] = useState<PayState>("select");
   const [invoice, setInvoice] = useState<QPayInvoice | null>(null);
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [lastPayload, setLastPayload] = useState<PaymentPayload | null>(null);
   const stopPollingRef = useRef<(() => void) | null>(null);
 
@@ -107,6 +108,25 @@ export default function Step5Plan({
       return;
     }
     void startPayment(payload);
+  };
+
+  const handleManualCheck = async () => {
+    if (!invoice) return;
+    setChecking(true);
+    try {
+      const res = await fetch(`/api/qpay/check?invoice_id=${invoice.invoice_id}`, { cache: "no-store" });
+      const data = await res.json();
+      if (data?.paid) {
+        stopPolling();
+        setPayState("success");
+      } else {
+        toast.info("Төлбөр баталгаажаагүй байна. Дахин оролдоно уу.");
+      }
+    } catch {
+      toast.error("Шалгахад алдаа гарлаа.");
+    } finally {
+      setChecking(false);
+    }
   };
 
   const handleCancelInvoice = async () => {
@@ -209,6 +229,13 @@ export default function Step5Plan({
           </svg>
           Төлбөр хүлээж байна...
         </div>
+        <button
+          onClick={() => void handleManualCheck()}
+          disabled={checking}
+          className="w-full bg-surface-2 border border-border hover:border-primary/40 text-text-secondary hover:text-text-primary font-semibold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50"
+        >
+          {checking ? "Шалгаж байна..." : "Төлбөр шалгах"}
+        </button>
         <button
           onClick={() => void handleCancelInvoice()}
           className="w-full border border-border hover:border-danger/40 text-text-secondary hover:text-danger font-semibold px-4 py-2.5 rounded-xl transition-colors"

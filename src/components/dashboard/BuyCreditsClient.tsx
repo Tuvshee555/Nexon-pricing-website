@@ -42,6 +42,7 @@ export default function BuyCreditsClient({
   const [invoice, setInvoice] = useState<QPayInvoice | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [successAmount, setSuccessAmount] = useState<InvoicePayload | null>(null);
   const [lastInvoicePayload, setLastInvoicePayload] = useState<InvoicePayload | null>(null);
   const stopPollingRef = useRef<(() => void) | null>(null);
@@ -265,6 +266,31 @@ export default function BuyCreditsClient({
             Төлбөр хүлээж байна...
           </div>
 
+          <button
+            onClick={async () => {
+              if (!invoice) return;
+              setChecking(true);
+              try {
+                const res = await fetch(`/api/qpay/check?invoice_id=${invoice.invoice_id}`, { cache: "no-store" });
+                const data = await res.json();
+                if (data?.paid) {
+                  stopPolling();
+                  setPaymentState("success");
+                  setSuccessAmount(lastInvoicePayload);
+                } else {
+                  toast.info("Төлбөр баталгаажаагүй байна. Дахин оролдоно уу.");
+                }
+              } catch {
+                toast.error("Шалгахад алдаа гарлаа.");
+              } finally {
+                setChecking(false);
+              }
+            }}
+            disabled={checking}
+            className="w-full border border-border hover:border-primary/40 text-text-secondary hover:text-text-primary py-2.5 rounded-lg text-sm transition-colors mb-2 disabled:opacity-50"
+          >
+            {checking ? "Шалгаж байна..." : "Төлбөр шалгах"}
+          </button>
           <button
             onClick={() => void reset({ expireCurrent: true })}
             className="w-full border border-border hover:border-danger/50 text-text-secondary hover:text-danger py-2.5 rounded-lg text-sm transition-colors"
