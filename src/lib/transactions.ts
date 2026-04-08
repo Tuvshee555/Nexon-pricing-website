@@ -1,6 +1,5 @@
 import { sql } from "@/lib/db";
-
-export type TransactionKind = "topup" | "subscription" | "message_pack" | "manual";
+export { inferTransactionType, type TransactionKind, type TransactionLike } from "@/lib/transaction-utils";
 
 interface TransactionInsertData {
   amount: number;

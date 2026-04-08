@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { inferTransactionType } from "@/lib/transactions";
+import { inferTransactionType } from "@/lib/transaction-utils";
 
 const TX_TYPE_LABEL: Record<string, string> = {
   topup: "Үлдэгдэл нэмэх",

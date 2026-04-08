@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { MONTHLY_PLANS } from "@/types";
 import type { Business, Plan, Credits, MessageLog } from "@/types";
-import { inferTransactionType } from "@/lib/transactions";
+import { inferTransactionType } from "@/lib/transaction-utils";
 
 interface RecentTransaction {
   id: string;

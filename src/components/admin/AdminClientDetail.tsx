@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { MONTHLY_PLANS } from "@/types";
-import { inferTransactionType } from "@/lib/transactions";
+import { inferTransactionType } from "@/lib/transaction-utils";
 import { toast } from "sonner";
 
 interface BusinessData {
