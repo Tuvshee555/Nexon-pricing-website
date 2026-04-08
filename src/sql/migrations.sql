@@ -10,6 +10,11 @@ ALTER TABLE public.businesses
   ADD COLUMN IF NOT EXISTS next_billing_date  TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS billing_active     BOOLEAN       DEFAULT false;
 
+-- 1b. Add low-credit alert state columns
+ALTER TABLE public.credits
+  ADD COLUMN IF NOT EXISTS low_credit_alert_active BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS low_credit_alert_sent_at TIMESTAMPTZ;
+
 -- 2. Add transaction_type to transactions table
 ALTER TABLE public.transactions
   ADD COLUMN IF NOT EXISTS transaction_type TEXT

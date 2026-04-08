@@ -26,6 +26,9 @@ export async function POST(request: Request) {
     }
 
     if (tx.status === "paid") return NextResponse.json({ success: true, message: "Already processed" });
+    if (tx.status === "cancelled") {
+      return NextResponse.json({ success: true, message: "Invoice cancelled" });
+    }
 
     const verification = await checkPayment(invoice_id);
     if (!verification.count || verification.count === 0) {

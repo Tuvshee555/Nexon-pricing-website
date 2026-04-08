@@ -57,6 +57,8 @@ CREATE TABLE IF NOT EXISTS credits (
   business_id UUID NOT NULL UNIQUE REFERENCES businesses(id) ON DELETE CASCADE,
   balance INTEGER NOT NULL DEFAULT 0,
   total_purchased INTEGER NOT NULL DEFAULT 0,
+  low_credit_alert_active BOOLEAN NOT NULL DEFAULT false,
+  low_credit_alert_sent_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

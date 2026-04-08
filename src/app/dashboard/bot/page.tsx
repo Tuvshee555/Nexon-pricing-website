@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
 import { sql } from "@/lib/db";
 import BotConfigEditor from "@/components/dashboard/bot/BotConfigEditor";
-import type ConversationListType from "@/components/dashboard/bot/ConversationList";
 import ConversationList from "@/components/dashboard/bot/ConversationList";
 
 export const dynamic = "force-dynamic";
@@ -43,7 +42,17 @@ export default async function BotPage() {
           status={business.status as string}
           platformAccounts={platformAccounts as { id: string; platform: string; page_name?: string; page_id?: string; instagram_account_id?: string }[]}
         />
-        <ConversationList threads={threads as Parameters<typeof ConversationListType>[0]["threads"]} />
+        <ConversationList
+          threads={
+            threads as {
+              id: string;
+              platform: string;
+              sender_id: string;
+              messages: Array<{ role: string; content: string }>;
+              last_message_at: string;
+            }[]
+          }
+        />
       </div>
     </div>
   );

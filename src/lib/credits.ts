@@ -1,4 +1,5 @@
 import { sql } from "@/lib/db";
+import { rearmLowCreditAlertIfRecovered } from "@/lib/credit-alerts";
 
 export async function addCredits(businessId: string, credits: number) {
   await sql`
@@ -10,6 +11,8 @@ export async function addCredits(businessId: string, credits: number) {
       total_purchased = credits.total_purchased + ${credits},
       updated_at = NOW()
   `;
+
+  await rearmLowCreditAlertIfRecovered(businessId);
 }
 
 export async function addVirtualBalance(businessId: string, amount: number) {

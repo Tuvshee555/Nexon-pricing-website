@@ -56,6 +56,23 @@ export async function notifyLowBalance(
   );
 }
 
+// 3b. Low message credits warning (business owner alert mirror to admin)
+export async function notifyLowMessageCredits(
+  businessName: string,
+  balance: number,
+  threshold: number,
+  recipientEmail?: string
+): Promise<void> {
+  await sendTelegramMessage(
+    `⚠️ <b>Мессеж кредит багаслаа</b>\n\n` +
+    `👤 Клиент: <b>${businessName}</b>\n` +
+    `📊 Үлдэгдэл: <b>${balance.toLocaleString()}</b>\n` +
+    `🚧 Босго: <b>${threshold.toLocaleString()}</b>\n` +
+    `📧 Мэйл: <code>${recipientEmail || "not-set"}</code>\n` +
+    `❗ Эзэнд сануулга илгээлээ`
+  );
+}
+
 // 4. Client ran out of messages
 export async function notifyOutOfMessages(businessName: string): Promise<void> {
   await sendTelegramMessage(

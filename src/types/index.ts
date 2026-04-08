@@ -50,6 +50,8 @@ export interface Credits {
   business_id: string;
   balance: number;
   total_purchased: number;
+  low_credit_alert_active?: boolean;
+  low_credit_alert_sent_at?: string | null;
 }
 
 export interface MessageLog {

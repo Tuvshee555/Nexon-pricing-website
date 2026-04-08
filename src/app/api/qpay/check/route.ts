@@ -27,6 +27,9 @@ export async function GET(request: Request) {
 
       if (!tx) return NextResponse.json({ paid: false, error: "Transaction not found" });
       if (tx.status === "paid") return NextResponse.json({ paid: true, alreadyProcessed: true });
+      if (tx.status === "cancelled") {
+        return NextResponse.json({ paid: false, expired: true, error: "Invoice expired" });
+      }
 
       const paymentId = result.rows[0].payment_id;
       const txType = inferTransactionType(tx as { transaction_type?: string; payment_method?: string; credits_added?: number; amount?: number });

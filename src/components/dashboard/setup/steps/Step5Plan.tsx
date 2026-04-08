@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { MONTHLY_PLANS, CREDIT_PACKS } from "@/types";
+import { CREDIT_PACKS, MONTHLY_PLANS } from "@/types";
+import { expireQPayInvoice, startQPayPolling, type QPayInvoice } from "@/lib/qpay-polling";
 
 interface Props {
   businessId: string;
@@ -13,6 +14,14 @@ interface Props {
 }
 
 type PlanTab = "credit" | "monthly";
+type PayState = "select" | "qr" | "success" | "expired";
+type PaymentKind = "message_pack" | "subscription";
+
+interface PaymentPayload {
+  amount: number;
+  credits?: number;
+  type: PaymentKind;
+}
 
 export default function Step5Plan({
   businessId,
@@ -24,37 +33,36 @@ export default function Step5Plan({
   const [tab, setTab] = useState<PlanTab>("credit");
   const [selectedPack, setSelectedPack] = useState(CREDIT_PACKS[1]);
   const [selectedMonthly, setSelectedMonthly] = useState(MONTHLY_PLANS[1]);
-  const [payState, setPayState] = useState<"select" | "qr" | "success">("select");
-  const [invoice, setInvoice] = useState<{
-    invoice_id: string;
-    qr_image: string;
-    qr_text: string;
-    urls: Array<{ name: string; link: string; logo: string }>;
-  } | null>(null);
+  const [payState, setPayState] = useState<PayState>("select");
+  const [invoice, setInvoice] = useState<QPayInvoice | null>(null);
   const [loading, setLoading] = useState(false);
-  const pollRef = useRef<NodeJS.Timeout | null>(null);
+  const [lastPayload, setLastPayload] = useState<PaymentPayload | null>(null);
+  const stopPollingRef = useRef<(() => void) | null>(null);
+
+  const stopPolling = () => {
+    if (stopPollingRef.current) {
+      stopPollingRef.current();
+      stopPollingRef.current = null;
+    }
+  };
 
   useEffect(() => {
     return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
+      stopPolling();
     };
   }, []);
 
-  const handlePay = async () => {
-    const amount = tab === "credit" ? selectedPack.amount : selectedMonthly.price;
-    const credits = tab === "credit" ? selectedPack.credits : undefined;
-    const type = tab === "credit" ? "message_pack" : "subscription";
-
-    if (!amount) {
-      // Enterprise plan — contact us
-      toast.info("Enterprise төлөвлөгөөний хувьд бидэнтэй холбоо барина уу.");
-      return;
-    }
-
+  const startPayment = async (payload: PaymentPayload) => {
     setLoading(true);
+    stopPolling();
+    setLastPayload(payload);
     try {
-      const body: Record<string, unknown> = { businessId, amount, type };
-      if (credits) body.credits = credits;
+      const body: Record<string, unknown> = {
+        businessId,
+        amount: payload.amount,
+        type: payload.type,
+      };
+      if (payload.credits) body.credits = payload.credits;
 
       const res = await fetch("/api/qpay/create-invoice", {
         method: "POST",
@@ -65,43 +73,47 @@ export default function Step5Plan({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Invoice үүсгэхэд алдаа гарлаа");
 
-      setInvoice(data);
+      const createdInvoice = data as QPayInvoice;
+      setInvoice(createdInvoice);
       setPayState("qr");
 
-      // Poll for payment (max 15 minutes = 300 attempts × 3s)
-      let attempts = 0;
-      pollRef.current = setInterval(async () => {
-        if (++attempts > 300) {
-          clearInterval(pollRef.current!);
-          setPayState("select");
-          toast.error("Төлбөр баталгаажаагүй байна. Дахин оролдоно уу.");
-          return;
-        }
-        try {
-          const checkRes = await fetch(`/api/qpay/check?invoice_id=${data.invoice_id}`);
-          const checkData = await checkRes.json();
-          if (checkData.paid) {
-            clearInterval(pollRef.current!);
-            const statusRes = await fetch("/api/business/update-status", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ status: "active" }),
-            });
-            if (!statusRes.ok) {
-              toast.error("Төлбөр амжилттай боловч идэвхжүүлэхэд алдаа гарлаа. Дахин нэвтэрнэ үү.");
-              return;
-            }
-            setPayState("success");
-          }
-        } catch {
-          // Transient network error — keep polling
-        }
-      }, 3000);
+      stopPollingRef.current = startQPayPolling({
+        invoiceId: createdInvoice.invoice_id,
+        onPaid: async () => {
+          setPayState("success");
+        },
+        onExpired: async () => {
+          await expireQPayInvoice(createdInvoice.invoice_id);
+          setPayState("expired");
+          toast.error("Нэхэмжлэхийн хугацаа дууслаа. Дахин оролдоно уу.");
+        },
+      });
     } catch (err) {
       toast.error(String(err));
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePay = () => {
+    const amount = tab === "credit" ? selectedPack.amount : selectedMonthly.price;
+    const payload: PaymentPayload =
+      tab === "credit"
+        ? { amount, credits: selectedPack.credits, type: "message_pack" }
+        : { amount, type: "subscription" };
+
+    if (!amount) {
+      toast.info("Enterprise төлөвлөгөөний хувьд бидэнтэй холбоо барина уу.");
+      return;
+    }
+    void startPayment(payload);
+  };
+
+  const handleCancelInvoice = async () => {
+    stopPolling();
+    if (invoice) await expireQPayInvoice(invoice.invoice_id);
+    setInvoice(null);
+    setPayState("select");
   };
 
   if (payState === "success") {
@@ -115,18 +127,49 @@ export default function Step5Plan({
         <div>
           <h2 className="text-2xl font-bold text-text-primary mb-2">Бүгд бэлэн!</h2>
           <p className="text-text-secondary text-sm">
-            Таны bot идэвхжлээ. Одоо {pageName || "Facebook хуудас"} дээр хэрэглэгчидтэй яриад үзнэ үү.
+            Таны bot идэвхжлээ. Одоо {pageName || "Facebook хуудас"} дээр хэрэглэгчидтэй ярьж үзнэ үү.
           </p>
-          {instagramConnected && (
-            <p className="text-pink-400 text-sm mt-1">+ Instagram Direct мессеж ч идэвхтэй</p>
-          )}
+          {instagramConnected ? (
+            <p className="text-pink-400 text-sm mt-1">+ Instagram Direct мессеж мөн идэвхтэй.</p>
+          ) : null}
         </div>
         <button
           onClick={onComplete}
           className="bg-primary hover:bg-primary/90 text-white font-semibold px-8 py-3 rounded-xl transition-colors"
         >
-          Хяналтын самбар руу орох →
+          Dashboard руу орох →
         </button>
+      </div>
+    );
+  }
+
+  if (payState === "expired" && lastPayload) {
+    return (
+      <div className="space-y-5 text-center">
+        <div className="w-16 h-16 bg-warning/10 border border-warning/30 rounded-full flex items-center justify-center mx-auto">
+          <svg className="w-8 h-8 text-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M4.93 19h14.14c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.2 16c-.77 1.33.19 3 1.73 3z" />
+          </svg>
+        </div>
+        <div>
+          <h2 className="text-xl font-bold text-text-primary mb-1">Нэхэмжлэх хүчингүй боллоо</h2>
+          <p className="text-sm text-text-secondary">QPay invoice 10 минутын дараа дуусдаг. Шинээр үүсгээд төлнө үү.</p>
+        </div>
+        <div className="flex gap-3">
+          <button
+            onClick={onBack}
+            className="flex-1 border border-border hover:border-primary/40 text-text-secondary hover:text-text-primary font-semibold px-6 py-3 rounded-xl transition-colors"
+          >
+            Буцах
+          </button>
+          <button
+            onClick={() => void startPayment(lastPayload)}
+            disabled={loading}
+            className="flex-1 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white font-semibold px-6 py-3 rounded-xl transition-colors"
+          >
+            Дахин invoice үүсгэх
+          </button>
+        </div>
       </div>
     );
   }
@@ -136,14 +179,11 @@ export default function Step5Plan({
       <div className="space-y-6">
         <div>
           <h2 className="text-xl font-bold text-text-primary mb-1">QPay төлбөр</h2>
-          <p className="text-text-secondary text-sm">QR код уншуулан төлбөрөө хийнэ үү.</p>
+          <p className="text-text-secondary text-sm">QR код уншуулан төлбөрөө хийнэ үү. Хугацаа: 10 минут.</p>
         </div>
         <div className="flex justify-center">
-          <img
-            src={`data:image/png;base64,${invoice.qr_image}`}
-            alt="QPay QR"
-            className="w-48 h-48 rounded-xl border border-border"
-          />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={`data:image/png;base64,${invoice.qr_image}`} alt="QPay QR" className="w-48 h-48 rounded-xl border border-border" />
         </div>
         <div className="grid grid-cols-2 gap-2">
           {invoice.urls?.slice(0, 6).map((url) => (
@@ -154,9 +194,10 @@ export default function Step5Plan({
               rel="noopener noreferrer"
               className="flex items-center gap-2 bg-surface-2 border border-border rounded-xl px-3 py-2 text-sm text-text-secondary hover:border-primary/40 hover:text-text-primary transition-colors"
             >
-              {url.logo && (
+              {url.logo ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img src={url.logo} alt={url.name} className="w-6 h-6 rounded" />
-              )}
+              ) : null}
               {url.name}
             </a>
           ))}
@@ -168,6 +209,12 @@ export default function Step5Plan({
           </svg>
           Төлбөр хүлээж байна...
         </div>
+        <button
+          onClick={() => void handleCancelInvoice()}
+          className="w-full border border-border hover:border-danger/40 text-text-secondary hover:text-danger font-semibold px-4 py-2.5 rounded-xl transition-colors"
+        >
+          Цуцлах
+        </button>
       </div>
     );
   }
@@ -179,24 +226,21 @@ export default function Step5Plan({
         <p className="text-text-secondary text-sm">Таны хэрэгцээнд тохирсон төлөвлөгөөг сонгоно уу.</p>
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-2 p-1 bg-surface-2 rounded-xl">
-        {(["credit", "monthly"] as PlanTab[]).map((t) => (
+        {(["credit", "monthly"] as PlanTab[]).map((type) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={type}
+            onClick={() => setTab(type)}
             className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-              tab === t
-                ? "bg-primary text-white"
-                : "text-text-secondary hover:text-text-primary"
+              tab === type ? "bg-primary text-white" : "text-text-secondary hover:text-text-primary"
             }`}
           >
-            {t === "credit" ? "Мессеж пакет" : "Сарын захиалга"}
+            {type === "credit" ? "Мессеж пакет" : "Сарын захиалга"}
           </button>
         ))}
       </div>
 
-      {tab === "credit" && (
+      {tab === "credit" ? (
         <div className="space-y-2">
           {CREDIT_PACKS.map((pack) => (
             <button
@@ -213,19 +257,17 @@ export default function Step5Plan({
                 <p className={`font-semibold ${selectedPack.amount === pack.amount ? "text-primary" : "text-text-primary"}`}>
                   {pack.credits} мессеж
                 </p>
-                {pack.popular && (
+                {pack.popular ? (
                   <span className="text-xs bg-accent/20 text-accent px-2 py-0.5 rounded-full">Алдартай</span>
-                )}
+                ) : null}
               </div>
               <p className="text-lg font-bold text-text-primary">{pack.amount.toLocaleString()}₮</p>
             </button>
           ))}
         </div>
-      )}
-
-      {tab === "monthly" && (
+      ) : (
         <div className="space-y-2">
-          {MONTHLY_PLANS.filter((p) => p.tier !== "enterprise").map((plan) => (
+          {MONTHLY_PLANS.filter((plan) => plan.tier !== "enterprise").map((plan) => (
             <button
               key={plan.tier}
               type="button"
@@ -241,9 +283,9 @@ export default function Step5Plan({
                   {plan.nameMn}
                 </p>
                 <p className="text-xs text-muted">{plan.messageLimit.toLocaleString()} мессеж/сар</p>
-                {plan.popular && (
+                {plan.popular ? (
                   <span className="text-xs bg-accent/20 text-accent px-2 py-0.5 rounded-full mt-1 inline-block">Алдартай</span>
-                )}
+                ) : null}
               </div>
               <p className="text-lg font-bold text-text-primary">{plan.price.toLocaleString()}₮/сар</p>
             </button>
