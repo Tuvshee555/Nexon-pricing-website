@@ -13,7 +13,7 @@ export default function PrivacyPage() {
         <div>
           <h2 className="text-xl font-semibold mb-2">1. Who We Are</h2>
           <p>
-            Nexon Digital Nova LLC ("Nexon", "we", "us") is a technology company
+            Nexon Digital Nova LLC (&quot;Nexon&quot;, &quot;we&quot;, &quot;us&quot;) is a technology company
             registered in Mongolia (Registration No. 7250777). We provide AI-powered
             messaging automation services for businesses via Facebook Messenger and
             Instagram. Our website is{" "}
