@@ -45,8 +45,11 @@ export async function GET(request: Request) {
   try {
     const redirectUri = `${appUrl}/api/facebook/callback`;
     const shortToken = await exchangeCodeForShortToken(code, redirectUri);
+    console.log("[FB callback] short token obtained, exchanging for long token...");
     const longToken = await exchangeForLongLivedToken(shortToken);
+    console.log("[FB callback] long token obtained, fetching pages...");
     const pages = await getUserPages(longToken);
+    console.log("[FB callback] getUserPages result:", JSON.stringify(pages));
 
     const pagesPayload = Buffer.from(JSON.stringify(pages)).toString("base64");
     const redirectUrl = `${appUrl}/dashboard/setup?step=2&fb_connected=1&businessId=${stateData.businessId}`;
