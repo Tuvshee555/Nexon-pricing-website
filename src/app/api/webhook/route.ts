@@ -48,6 +48,7 @@ export async function POST(request: Request) {
         SELECT business_id, page_access_token FROM platform_accounts WHERE page_id = ${pageId} LIMIT 1
       `;
       const pageAccount = pageAccounts[0] ?? null;
+      console.log(`[webhook] pageId=${pageId} found=${!!pageAccount} businessId=${pageAccount?.business_id}`);
       const pageAccessToken: string | undefined =
         (pageAccount?.page_access_token as string | undefined) ?? process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
 
@@ -55,6 +56,7 @@ export async function POST(request: Request) {
         const platform = body.object === "instagram" ? "instagram" : "messenger";
         const senderId = event.sender?.id || event.from?.id;
         const messageText = event.message?.text || event.text;
+        console.log(`[webhook] event senderId=${senderId} text=${messageText?.slice(0, 50)}`);
         if (!senderId || !messageText) continue;
 
         let businessId: string | null = (pageAccount?.business_id as string) ?? null;
@@ -78,6 +80,7 @@ export async function POST(request: Request) {
         ]);
 
         const business = businesses[0] ?? null;
+        console.log(`[webhook] business status=${business?.status} credits=${creditsRows[0]?.balance}`);
         if (!business || business.status !== "active") continue;
 
         const credits = creditsRows[0] ?? null;
@@ -117,11 +120,12 @@ export async function POST(request: Request) {
           }),
         });
         if (!openaiRes.ok) {
-          console.error("OpenAI error:", await openaiRes.text());
+          console.error("[webhook] OpenAI error:", await openaiRes.text());
           continue;
         }
 
         const openaiData = await openaiRes.json();
+        console.log(`[webhook] OpenAI OK, reply length=${openaiData?.choices?.[0]?.message?.content?.length}`);
         const reply = openaiData.choices?.[0]?.message?.content || "";
         const usage = openaiData.usage || {
           prompt_tokens: 0,
