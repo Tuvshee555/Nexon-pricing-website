@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS businesses (
   name TEXT NOT NULL,
   platforms TEXT[] NOT NULL DEFAULT '{}',
   bot_prompt TEXT NOT NULL DEFAULT '',
+  knowledge_json JSONB,
   contact_phone TEXT NOT NULL DEFAULT '',
   contact_email TEXT NOT NULL DEFAULT '',
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'paused', 'cancelled')),

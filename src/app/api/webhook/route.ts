@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createHmac } from "crypto";
 import { sql } from "@/lib/db";
 import { maybeSendLowCreditAlert } from "@/lib/credit-alerts";
+import { appendKnowledgeSection } from "@/lib/bot-prompt";
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN!;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY!;
@@ -70,7 +71,7 @@ export async function POST(request: Request) {
         if (!businessId) continue;
 
         const [businesses, creditsRows, threads] = await Promise.all([
-          sql`SELECT bot_prompt, status FROM businesses WHERE id = ${businessId} LIMIT 1`,
+          sql`SELECT bot_prompt, status, knowledge_json FROM businesses WHERE id = ${businessId} LIMIT 1`,
           sql`SELECT balance FROM credits WHERE business_id = ${businessId} LIMIT 1`,
           sql`
             SELECT messages FROM conversation_threads
@@ -88,7 +89,7 @@ export async function POST(request: Request) {
           if (pageAccessToken) {
             await sendFacebookMessage(
               senderId,
-              "Таны кредит дууссан байна. Nexon хяналтын самбараас кредит нэмнэ үү.",
+              "Ð¢Ð°Ð½Ñ‹ ÐºÑ€ÐµÐ´Ð¸Ñ‚ Ð´ÑƒÑƒÑÑÐ°Ð½ Ð±Ð°Ð¹Ð½Ð°. Nexon Ñ…ÑÐ½Ð°Ð»Ñ‚Ñ‹Ð½ ÑÐ°Ð¼Ð±Ð°Ñ€Ð°Ð°Ñ ÐºÑ€ÐµÐ´Ð¸Ñ‚ Ð½ÑÐ¼Ð½Ñ Ò¯Ò¯.",
               platform,
               pageAccessToken
             );
@@ -96,13 +97,17 @@ export async function POST(request: Request) {
           continue;
         }
 
+        const systemPrompt = appendKnowledgeSection(
+          (business.bot_prompt as string) || "Ð¢Ð° Ñ‚ÑƒÑÐ»Ð°Ñ… AI Ð±Ð°Ð¹Ð½Ð°.",
+          business.knowledge_json
+        );
         const fullHistory: Array<{ role: string; content: string }> = Array.isArray(threads[0]?.messages)
           ? (threads[0].messages as Array<{ role: string; content: string }>)
           : [];
         const recentContext = fullHistory.slice(-20);
 
         const openaiMessages = [
-          { role: "system", content: (business.bot_prompt as string) || "Та туслах AI байна." },
+          { role: "system", content: systemPrompt },
           ...recentContext,
           { role: "user", content: messageText },
         ];

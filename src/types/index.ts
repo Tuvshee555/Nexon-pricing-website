@@ -16,6 +16,7 @@ export interface Business {
   name: string;
   platforms: Platform[];
   bot_prompt: string;
+  knowledge_json: unknown | null;
   contact_phone: string;
   contact_email: string;
   status: BusinessStatus;

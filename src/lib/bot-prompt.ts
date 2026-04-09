@@ -40,6 +40,14 @@ export function estimateTokensFromChars(text: string): number {
   return Math.ceil((text || "").length / 4);
 }
 
+export function appendKnowledgeSection(prompt: string, knowledgeJson: unknown | null | undefined): string {
+  const knowledgeSection = knowledgeJson
+    ? "\n\nBusiness knowledge base (use this to answer questions):\n" + JSON.stringify(knowledgeJson, null, 0)
+    : "";
+
+  return `${prompt || ""}${knowledgeSection}`;
+}
+
 export function composePromptFromSections(
   sections: GuidedBotSections,
   tone: string

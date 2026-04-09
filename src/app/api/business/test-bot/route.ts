@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
 import { sql } from "@/lib/db";
+import { appendKnowledgeSection } from "@/lib/bot-prompt";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY!;
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
@@ -22,10 +23,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Message is required" }, { status: 400 });
   }
 
-  const businesses = await sql`SELECT id FROM businesses WHERE user_id = ${userId} LIMIT 1`;
-  if (!businesses[0]) return NextResponse.json({ error: "Business not found" }, { status: 404 });
+  const businesses = await sql`
+    SELECT id, knowledge_json FROM businesses WHERE user_id = ${userId} LIMIT 1
+  `;
+  const business = businesses[0] ?? null;
+  if (!business) return NextResponse.json({ error: "Business not found" }, { status: 404 });
 
-  const systemPrompt = botPrompt?.trim() || `Та ${botName || "Nexon Bot"} нэртэй туслах AI байна.`;
+  const basePrompt = botPrompt?.trim() || `Ð¢Ð° ${botName || "Nexon Bot"} Ð½ÑÑ€Ñ‚ÑÐ¹ Ñ‚ÑƒÑÐ»Ð°Ñ… AI Ð±Ð°Ð¹Ð½Ð°.`;
+  const systemPrompt = appendKnowledgeSection(basePrompt, business.knowledge_json);
 
   const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",

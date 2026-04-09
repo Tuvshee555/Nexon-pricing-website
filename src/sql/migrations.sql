@@ -8,7 +8,8 @@ ALTER TABLE public.businesses
   ADD COLUMN IF NOT EXISTS virtual_balance    INTEGER       DEFAULT 0,
   ADD COLUMN IF NOT EXISTS subscription_price INTEGER       DEFAULT 0,
   ADD COLUMN IF NOT EXISTS next_billing_date  TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS billing_active     BOOLEAN       DEFAULT false;
+  ADD COLUMN IF NOT EXISTS billing_active     BOOLEAN       DEFAULT false,
+  ADD COLUMN IF NOT EXISTS knowledge_json     JSONB;
 
 -- 1b. Add low-credit alert state columns
 ALTER TABLE public.credits

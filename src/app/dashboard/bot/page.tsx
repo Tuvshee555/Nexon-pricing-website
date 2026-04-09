@@ -14,7 +14,7 @@ export default async function BotPage() {
   const userId = session.user.id;
 
   const businesses = await sql`
-    SELECT id, name, bot_name, bot_prompt, welcome_message, bot_tone, status, platforms
+    SELECT id, name, bot_name, bot_prompt, knowledge_json, welcome_message, bot_tone, status, platforms
     FROM businesses WHERE user_id = ${userId} LIMIT 1
   `;
   const business = businesses[0] ?? null;
@@ -40,6 +40,7 @@ export default async function BotPage() {
           welcomeMessage={(business.welcome_message as string) || ""}
           botTone={(business.bot_tone as string) || "friendly"}
           status={business.status as string}
+          knowledgeLoaded={!!business.knowledge_json}
           platformAccounts={platformAccounts as { id: string; platform: string; page_name?: string; page_id?: string; instagram_account_id?: string }[]}
         />
         <ConversationList
