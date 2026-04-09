@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import QRCode from "react-qr-code";
 import { CREDIT_PACKS, MONTHLY_PLANS } from "@/types";
 import { expireQPayInvoice, startQPayPolling, type QPayInvoice } from "@/lib/qpay-polling";
 
@@ -202,8 +203,9 @@ export default function Step5Plan({
           <p className="text-text-secondary text-sm">QR код уншуулан төлбөрөө хийнэ үү. Хугацаа: 10 минут.</p>
         </div>
         <div className="flex justify-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={`data:image/png;base64,${invoice.qr_image}`} alt="QPay QR" className="w-48 h-48 rounded-xl border border-border" />
+          <div className="bg-white p-3 rounded-xl border border-border">
+            <QRCode value={invoice.qr_text} size={192} />
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-2">
           {invoice.urls?.slice(0, 6).map((url) => (

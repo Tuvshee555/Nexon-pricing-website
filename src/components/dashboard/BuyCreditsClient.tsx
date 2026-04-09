@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import QRCode from "react-qr-code";
 import { CREDIT_PACKS } from "@/types";
 import { expireQPayInvoice, startQPayPolling, type QPayInvoice } from "@/lib/qpay-polling";
 
@@ -228,9 +229,8 @@ export default function BuyCreditsClient({
           </div>
 
           <div className="bg-white rounded-2xl p-4 flex items-center justify-center mb-6">
-            {invoice.qr_image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={`data:image/png;base64,${invoice.qr_image}`} alt="QPay QR Code" className="w-56 h-56" />
+            {invoice.qr_text ? (
+              <QRCode value={invoice.qr_text} size={224} />
             ) : (
               <div className="w-56 h-56 bg-gray-100 flex items-center justify-center text-gray-400 text-sm">
                 QR код ачааллаж байна...
