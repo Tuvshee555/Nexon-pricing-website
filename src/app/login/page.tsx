@@ -4,10 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
-import { useLanguage } from "@/contexts/LanguageContext";
-
 export default function LoginPage() {
-  const { t } = useLanguage();
   const router = useRouter();
 
   const [email, setEmail] = useState("");
