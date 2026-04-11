@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createHmac } from "crypto";
 import { sql } from "@/lib/db";
-import { maybeSendLowCreditAlert } from "@/lib/credit-alerts";
 import { appendKnowledgeSection } from "@/lib/bot-prompt";
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN!;
@@ -70,9 +69,9 @@ export async function POST(request: Request) {
         }
         if (!businessId) continue;
 
-        const [businesses, creditsRows, threads, keywordTriggers] = await Promise.all([
-          sql`SELECT bot_prompt, status, knowledge_json FROM businesses WHERE id = ${businessId} LIMIT 1`,
-          sql`SELECT balance FROM credits WHERE business_id = ${businessId} LIMIT 1`,
+        const [businesses, plans, threads, keywordTriggers] = await Promise.all([
+          sql`SELECT bot_prompt, status, knowledge_json, billing_active FROM businesses WHERE id = ${businessId} LIMIT 1`,
+          sql`SELECT plan_type, monthly_tier, monthly_message_limit, monthly_price FROM plans WHERE business_id = ${businessId} LIMIT 1`,
           sql`
             SELECT messages FROM conversation_threads
             WHERE business_id = ${businessId} AND platform = ${platform} AND sender_id = ${senderId}
@@ -86,21 +85,20 @@ export async function POST(request: Request) {
         ]);
 
         const business = businesses[0] ?? null;
-        console.log(`[webhook] business status=${business?.status} credits=${creditsRows[0]?.balance}`);
-        if (!business || business.status !== "active") continue;
+        const plan = plans[0] ?? null;
+        console.log(`[webhook] business status=${business?.status} billing_active=${business?.billing_active} plan=${plan?.plan_type}`);
+        if (!business || business.status !== "active" || !business.billing_active || plan?.plan_type !== "monthly") continue;
 
-        // Check keyword triggers first (bypass AI)
         const lowerText = messageText.toLowerCase();
         const matchedTrigger = (keywordTriggers as Array<{ keyword: string; match_type: string; response: string }>).find((t) => {
           const kw = t.keyword.toLowerCase();
           if (t.match_type === "exact") return lowerText === kw;
           if (t.match_type === "starts_with") return lowerText.startsWith(kw);
-          return lowerText.includes(kw); // contains (default)
+          return lowerText.includes(kw);
         });
 
         if (matchedTrigger && pageAccessToken) {
           await sendFacebookMessage(senderId, matchedTrigger.response, platform, pageAccessToken);
-          // Still log the conversation
           const existingMessages: Array<{ role: string; content: string }> = Array.isArray(threads[0]?.messages)
             ? (threads[0].messages as Array<{ role: string; content: string }>)
             : [];
@@ -118,21 +116,8 @@ export async function POST(request: Request) {
           continue;
         }
 
-        const credits = creditsRows[0] ?? null;
-        if (!credits || (credits.balance as number) <= 0) {
-          if (pageAccessToken) {
-            await sendFacebookMessage(
-              senderId,
-              "Ð¢Ð°Ð½Ñ‹ ÐºÑ€ÐµÐ´Ð¸Ñ‚ Ð´ÑƒÑƒÑÑÐ°Ð½ Ð±Ð°Ð¹Ð½Ð°. Nexon Ñ…ÑÐ½Ð°Ð»Ñ‚Ñ‹Ð½ ÑÐ°Ð¼Ð±Ð°Ñ€Ð°Ð°Ñ ÐºÑ€ÐµÐ´Ð¸Ñ‚ Ð½ÑÐ¼Ð½Ñ Ò¯Ò¯.",
-              platform,
-              pageAccessToken
-            );
-          }
-          continue;
-        }
-
         const systemPrompt = appendKnowledgeSection(
-          (business.bot_prompt as string) || "Ð¢Ð° Ñ‚ÑƒÑÐ»Ð°Ñ… AI Ð±Ð°Ð¹Ð½Ð°.",
+          (business.bot_prompt as string) || "Та туслах AI байна.",
           business.knowledge_json
         );
         const fullHistory: Array<{ role: string; content: string }> = Array.isArray(threads[0]?.messages)
@@ -171,26 +156,13 @@ export async function POST(request: Request) {
           completion_tokens: 0,
           total_tokens: 0,
         };
-        const creditsUsed = Math.max(1, Math.ceil(usage.total_tokens / 1000));
-
-        const deducted = await sql`
-          UPDATE credits
-          SET balance = balance - ${creditsUsed}
-          WHERE business_id = ${businessId} AND balance >= ${creditsUsed}
-          RETURNING balance
-        `;
-        if (!deducted.length) continue;
-
-        void maybeSendLowCreditAlert(businessId).catch((error) => {
-          console.error("Low credit alert check failed:", error);
-        });
 
         await sql`
           INSERT INTO message_logs (
             business_id, platform, message_count, prompt_tokens, completion_tokens, total_tokens, credits_used, source
           )
           VALUES (
-            ${businessId}, ${platform}, 1, ${usage.prompt_tokens}, ${usage.completion_tokens}, ${usage.total_tokens}, ${creditsUsed}, 'api'
+            ${businessId}, ${platform}, 1, ${usage.prompt_tokens}, ${usage.completion_tokens}, ${usage.total_tokens}, 0, 'api'
           )
         `;
 

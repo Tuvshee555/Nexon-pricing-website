@@ -33,7 +33,7 @@ export interface Business {
   business_type: string;
 }
 
-export type PlanType = "monthly" | "credit";
+export type PlanType = "monthly";
 export type MonthlyTier = "basic" | "standard" | "premium" | "enterprise";
 
 export interface Plan {
@@ -44,15 +44,6 @@ export interface Plan {
   monthly_message_limit?: number;
   monthly_price?: number;
   billing_cycle_start?: string;
-}
-
-export interface Credits {
-  id: string;
-  business_id: string;
-  balance: number;
-  total_purchased: number;
-  low_credit_alert_active?: boolean;
-  low_credit_alert_sent_at?: string | null;
 }
 
 export interface MessageLog {
@@ -70,7 +61,7 @@ export interface MessageLog {
 
 export type TransactionStatus = "pending" | "paid" | "failed" | "cancelled";
 
-export type TransactionType = "topup" | "subscription" | "message_pack" | "manual";
+export type TransactionType = "topup" | "subscription" | "manual";
 
 export interface Transaction {
   id: string;
@@ -98,19 +89,7 @@ export interface PlatformAccount {
   token_expires_at?: string;
 }
 
-export interface CreditPack {
-  amount: number;
-  credits: number;
-  popular?: boolean;
-}
-
 export const SETUP_FEE = 75000;
-
-export const CREDIT_PACKS: CreditPack[] = [
-  { amount: 25000, credits: 150 },
-  { amount: 50000, credits: 400, popular: true },
-  { amount: 100000, credits: 900 },
-];
 
 export const MONTHLY_PLANS = [
   {

@@ -3,10 +3,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
 import { sql } from "@/lib/db";
 import { MONTHLY_PLANS } from "@/types";
-import { addCredits, addVirtualBalance } from "@/lib/credits";
+import { addVirtualBalance } from "@/lib/credits";
 import { insertTransaction } from "@/lib/transactions";
 
-const MAX_CREDITS = 1_000_000;
 const MAX_BALANCE = 100_000_000;
 
 function safeInt(value: unknown, max: number): number | null {
@@ -34,7 +33,7 @@ async function logAudit(adminId: string, action: string, businessId: string | nu
 }
 
 const VALID_ACTIONS = [
-  "activate", "pause", "cancel", "add_credits", "reduce_credits",
+  "activate", "pause", "cancel",
   "add_balance", "set_billing", "add_platform", "disconnect_platform", "reset_history", "setup_business", "update",
 ] as const;
 type ValidAction = typeof VALID_ACTIONS[number];
@@ -69,29 +68,6 @@ export async function POST(request: Request) {
         await sql`UPDATE businesses SET status = 'cancelled' WHERE id = ${businessId}`;
         await logAudit(adminId, "cancel", businessId);
         break;
-
-      case "add_credits": {
-        const credits = safeInt(body.credits, MAX_CREDITS);
-        if (!credits) return NextResponse.json({ error: "Invalid credits (must be 1-1,000,000)" }, { status: 400 });
-        await addCredits(businessId, credits);
-        await insertTransaction({
-          business_id: businessId, amount: 0, credits_added: credits,
-          payment_method: "manual", status: "paid",
-          paid_at: new Date().toISOString(), transaction_type: "manual",
-        });
-        await logAudit(adminId, "add_credits", businessId, { credits });
-        break;
-      }
-
-      case "reduce_credits": {
-        const reduceAmount = safeInt(body.credits, MAX_CREDITS);
-        if (!reduceAmount) return NextResponse.json({ error: "Invalid credits" }, { status: 400 });
-        const curRows = await sql`SELECT balance FROM credits WHERE business_id = ${businessId} LIMIT 1`;
-        const newBalance = Math.max(0, ((curRows[0]?.balance as number) || 0) - reduceAmount);
-        await sql`UPDATE credits SET balance = ${newBalance} WHERE business_id = ${businessId}`;
-        await logAudit(adminId, "reduce_credits", businessId, { reduceAmount, newBalance });
-        break;
-      }
 
       case "add_balance": {
         const amount = safeInt(body.amount, MAX_BALANCE);
@@ -178,7 +154,7 @@ export async function POST(request: Request) {
       }
 
       case "setup_business": {
-        const { userId, businessName, platforms, planType, monthlyTier, initialCredits, botPrompt } = body;
+        const { userId, businessName, platforms, monthlyTier, botPrompt } = body;
         if (!userId || !businessName?.trim()) {
           return NextResponse.json({ error: "userId and businessName required" }, { status: 400 });
         }
@@ -195,16 +171,13 @@ export async function POST(request: Request) {
           INSERT INTO plans (business_id, plan_type, monthly_tier, monthly_message_limit, monthly_price, billing_cycle_start)
           VALUES (
             ${newBiz.id as string},
-            ${planType || "credit"},
-            ${planType === "monthly" ? (monthlyTier || "basic") : null},
-            ${planType === "monthly" ? (mp?.messageLimit === Infinity ? -1 : mp?.messageLimit || null) : null},
-            ${planType === "monthly" ? mp?.price || null : null},
+            'monthly',
+            ${monthlyTier || "basic"},
+            ${mp?.messageLimit === Infinity ? -1 : mp?.messageLimit || null},
+            ${mp?.price || null},
             ${new Date().toISOString().split("T")[0]}
           )
         `;
-
-        const initCredits = safeInt(initialCredits, MAX_CREDITS) || 0;
-        await sql`INSERT INTO credits (business_id, balance, total_purchased) VALUES (${newBiz.id as string}, ${initCredits}, ${initCredits})`;
 
         await logAudit(adminId, "setup_business", newBiz.id as string, { userId, businessName: businessName.trim() });
         return NextResponse.json({ success: true, businessId: newBiz.id });
@@ -223,12 +196,10 @@ export async function POST(request: Request) {
         const monthlyPlan = MONTHLY_PLANS.find((p) => p.tier === body.monthly_tier);
         const planValues = {
           business_id: businessId,
-          plan_type: body.plan_type,
-          monthly_tier: body.plan_type === "monthly" ? body.monthly_tier : null,
-          monthly_message_limit: body.plan_type === "monthly"
-            ? (monthlyPlan?.messageLimit === Infinity ? -1 : monthlyPlan?.messageLimit || null)
-            : null,
-          monthly_price: body.plan_type === "monthly" ? monthlyPlan?.price || null : null,
+          plan_type: "monthly",
+          monthly_tier: body.monthly_tier,
+          monthly_message_limit: monthlyPlan?.messageLimit === Infinity ? -1 : monthlyPlan?.messageLimit || null,
+          monthly_price: monthlyPlan?.price || null,
         };
 
         if (existingPlan) {

@@ -3,14 +3,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
 import { sql } from "@/lib/db";
 import { MONTHLY_PLANS } from "@/types";
-import { insertTransaction } from "@/lib/transactions";
 import bcrypt from "bcryptjs";
 
 export async function POST(request: Request) {
   try {
     const {
-      email, password, businessName, platforms, planType, monthlyTier,
-      initialCredits, botPrompt, contactPhone, contactEmail,
+      email, password, businessName, platforms, monthlyTier,
+      botPrompt, contactPhone, contactEmail,
     } = await request.json();
 
     const session = await getServerSession(authOptions);
@@ -48,24 +47,13 @@ export async function POST(request: Request) {
       INSERT INTO plans (business_id, plan_type, monthly_tier, monthly_message_limit, monthly_price, billing_cycle_start)
       VALUES (
         ${businessId},
-        ${planType},
-        ${planType === "monthly" ? monthlyTier : null},
-        ${planType === "monthly" ? (monthlyPlan?.messageLimit === Infinity ? -1 : monthlyPlan?.messageLimit || null) : null},
-        ${planType === "monthly" ? monthlyPlan?.price || null : null},
+        'monthly',
+        ${monthlyTier},
+        ${monthlyPlan?.messageLimit === Infinity ? -1 : monthlyPlan?.messageLimit || null},
+        ${monthlyPlan?.price || null},
         ${new Date().toISOString().split("T")[0]}
       )
     `;
-
-    const credits = parseInt(initialCredits) || 0;
-    await sql`INSERT INTO credits (business_id, balance, total_purchased) VALUES (${businessId}, ${credits}, ${credits})`;
-
-    if (credits > 0) {
-      await insertTransaction({
-        business_id: businessId, amount: 0, credits_added: credits,
-        payment_method: "manual", status: "paid",
-        paid_at: new Date().toISOString(), transaction_type: "manual",
-      });
-    }
 
     return NextResponse.json({ businessId });
   } catch (err) {

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { MONTHLY_PLANS } from "@/types";
-import type { Business, Plan, Credits, MessageLog } from "@/types";
+import type { Business, Plan, MessageLog } from "@/types";
 import { inferTransactionType } from "@/lib/transaction-utils";
 
 interface RecentTransaction {
@@ -17,18 +17,15 @@ interface RecentTransaction {
 interface Props {
   business: Business;
   plan: Plan | null;
-  credits: Credits | null;
   logs: MessageLog[];
   messagesThisMonth: number;
-  creditsUsedThisMonth: number;
   recentTransactions: RecentTransaction[];
   showWelcome: boolean;
 }
 
 const TX_TYPE_LABEL: Record<string, string> = {
   topup: "Үлдэгдэл нэмэх",
-  message_pack: "Мессеж пакет",
-  subscription: "Сарын хасалт",
+  subscription: "Сарын захиалга",
   manual: "Гараар нэмсэн",
 };
 
@@ -61,10 +58,8 @@ function MessengerIcon() {
 export default function ClientDashboard({
   business,
   plan,
-  credits,
   logs,
   messagesThisMonth,
-  creditsUsedThisMonth,
   recentTransactions,
   showWelcome,
 }: Props) {
@@ -77,8 +72,7 @@ export default function ClientDashboard({
     const start = new Date(plan.billing_cycle_start);
     const nextReset = new Date(start);
     nextReset.setMonth(nextReset.getMonth() + 1);
-    const diff = Math.ceil((nextReset.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-    return diff;
+    return Math.ceil((nextReset.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
   };
 
   const messageLimit = plan?.monthly_message_limit;
@@ -88,12 +82,10 @@ export default function ClientDashboard({
 
   const virtualBalance = business.virtual_balance || 0;
   const subscriptionPrice = business.subscription_price || 0;
-  const isLowBalance = subscriptionPrice > 0 && virtualBalance < subscriptionPrice;
-  const monthsRemaining = subscriptionPrice > 0 ? Math.floor(virtualBalance / subscriptionPrice) : 0;
-
-  const hasInstagram = business.platforms?.includes("instagram");
-  const hasMessenger = business.platforms?.includes("messenger");
-  const hasAnyPlatform = hasInstagram || hasMessenger;
+  const nextBillingDate = business.next_billing_date
+    ? new Date(business.next_billing_date).toLocaleDateString("mn-MN")
+    : "—";
+  const billingActive = business.billing_active;
 
   const statusColor: Record<string, string> = {
     active: "text-green-600 bg-green-50 border-green-200",
@@ -108,7 +100,6 @@ export default function ClientDashboard({
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-
       {showWelcome && (
         <div className="bg-green-50 border border-green-200 text-green-700 rounded-xl p-4 text-sm font-medium flex items-center gap-3">
           <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -118,24 +109,22 @@ export default function ClientDashboard({
         </div>
       )}
 
-      {isLowBalance && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-700 rounded-xl p-4 text-sm flex items-center gap-3">
-          <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <div className="flex-1">
-            <p className="font-semibold">Үлдэгдэл бага байна</p>
-            <p className="text-amber-600 mt-0.5">
-              Одоогийн үлдэгдэл: {virtualBalance.toLocaleString()}₮. Сарын захиалга ({subscriptionPrice.toLocaleString()}₮) хасагдана.
-            </p>
-          </div>
-          <Link href="/dashboard/buy-credits" className="shrink-0 bg-amber-100 hover:bg-amber-200 text-amber-700 font-semibold px-3 py-1.5 rounded-lg text-xs transition-colors">
-            Нэмэх
-          </Link>
+      <div className={`rounded-xl p-4 text-sm flex items-center gap-3 border ${
+        billingActive ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-amber-50 border-amber-200 text-amber-700"
+      }`}>
+        <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <div className="flex-1">
+          <p className="font-semibold">
+            {billingActive ? "Биллинг идэвхтэй байна" : "Биллинг идэвхгүй байна"}
+          </p>
+          <p className="mt-0.5">
+            Дараагийн төлбөр: {nextBillingDate} · Үлдэгдэл: {virtualBalance.toLocaleString()}₮
+          </p>
         </div>
-      )}
+      </div>
 
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-900">{business.name}</h1>
@@ -157,75 +146,13 @@ export default function ClientDashboard({
         </Link>
       </div>
 
-      {/* Connected channels */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-base font-bold text-gray-900">Холбосон сувгууд</h2>
-          <Link
-            href="/dashboard/bot"
-            className="text-xs text-primary font-semibold hover:text-primary/80 transition-colors"
-          >
-            Удирдах →
-          </Link>
-        </div>
-
-        {hasAnyPlatform ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {hasInstagram && (
-              <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-pink-50 to-purple-50 border border-pink-100 rounded-xl">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white shadow-sm">
-                  <InstagramIcon />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">Instagram</p>
-                  <p className="text-xs text-gray-500">Холбогдсон · Идэвхтэй</p>
-                </div>
-                <div className="ml-auto w-2 h-2 rounded-full bg-green-400" />
-              </div>
-            )}
-            {hasMessenger && (
-              <div className="flex items-center gap-4 p-4 bg-blue-50 border border-blue-100 rounded-xl">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white shadow-sm">
-                  <MessengerIcon />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">Messenger</p>
-                  <p className="text-xs text-gray-500">Холбогдсон · Идэвхтэй</p>
-                </div>
-                <div className="ml-auto w-2 h-2 rounded-full bg-green-400" />
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="text-center py-10">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-            </div>
-            <p className="text-gray-700 font-semibold mb-1">Суваг холбоогүй байна</p>
-            <p className="text-gray-400 text-sm mb-5">Facebook эсвэл Instagram хуудсаа холбоно уу</p>
-            <Link
-              href="/dashboard/bot"
-              className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors shadow-sm"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Суваг холбох
-            </Link>
-          </div>
-        )}
-      </div>
-
-      {/* Stats row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           {
-            label: "Үлдсэн мессеж",
-            value: (credits?.balance || 0).toLocaleString(),
-            sub: `Энэ сард ${creditsUsedThisMonth} зарцуулсан`,
-            color: "text-primary",
+            label: "Төлөвлөгөө",
+            value: monthlyPlan ? (monthlyPlan.nameMn || monthlyPlan.nameEn) : "—",
+            sub: subscriptionPrice > 0 ? `${subscriptionPrice.toLocaleString()}₮/сар` : "Custom",
+            color: "text-gray-900",
           },
           {
             label: "Энэ сарын мессеж",
@@ -236,13 +163,13 @@ export default function ClientDashboard({
           {
             label: "Үлдэгдэл",
             value: `${virtualBalance.toLocaleString()}₮`,
-            sub: subscriptionPrice > 0 ? `~${monthsRemaining} сар` : "—",
-            color: isLowBalance ? "text-amber-600" : "text-gray-900",
+            sub: billingActive ? `Дараагийн төлбөр ${nextBillingDate}` : "Billing хаалттай",
+            color: billingActive ? "text-gray-900" : "text-amber-600",
           },
           {
-            label: "Төлөвлөгөө",
-            value: plan?.plan_type === "monthly" ? (monthlyPlan?.nameMn || "Сарын") : plan?.plan_type === "credit" ? "Пакет" : "—",
-            sub: subscriptionPrice > 0 ? `${subscriptionPrice.toLocaleString()}₮/сар` : "Credit-based",
+            label: "Дахин шинэчлэгдэх",
+            value: daysUntilReset() != null ? `${daysUntilReset()} өдөр` : "—",
+            sub: plan?.billing_cycle_start ? new Date(plan.billing_cycle_start).toLocaleDateString("mn-MN") : "—",
             color: "text-gray-900",
           },
         ].map((s) => (
@@ -254,13 +181,14 @@ export default function ClientDashboard({
         ))}
       </div>
 
-      {/* Usage progress (monthly plan) */}
       {plan?.plan_type === "monthly" && messageLimit && messageLimit > 0 && (
         <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <div>
               <p className="text-sm font-semibold text-gray-800">Мессежийн хэрэглээ</p>
-              <p className="text-xs text-gray-500 mt-0.5">{monthlyPlan?.nameMn} · {daysUntilReset()} өдрийн дараа шинэчлэгдэнэ</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {monthlyPlan?.nameMn} · {daysUntilReset()} өдрийн дараа шинэчлэгдэнэ
+              </p>
             </div>
             <span className="text-sm font-bold text-gray-700">
               {messagesThisMonth.toLocaleString()} / {messageLimit.toLocaleString()}
@@ -279,14 +207,10 @@ export default function ClientDashboard({
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Recent payments */}
         {recentTransactions.length > 0 && (
           <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-gray-100">
               <h2 className="text-sm font-bold text-gray-900">Сүүлийн төлбөрүүд</h2>
-              <Link href="/dashboard/buy-credits" className="text-xs text-primary hover:text-primary/80 font-semibold">
-                Нэмэх →
-              </Link>
             </div>
             <div className="divide-y divide-gray-50">
               {recentTransactions.slice(0, 5).map((tx) => (
@@ -301,7 +225,6 @@ export default function ClientDashboard({
                   </div>
                   <div className="text-right">
                     {tx.amount > 0 && <p className="text-sm font-semibold text-green-600">{tx.amount.toLocaleString()}₮</p>}
-                    {tx.credits_added > 0 && <p className="text-xs text-primary">+{tx.credits_added} msg</p>}
                     <span className={`text-xs px-1.5 py-0.5 rounded-full ${
                       tx.status === "paid" ? "text-green-600 bg-green-50" : "text-amber-600 bg-amber-50"
                     }`}>
@@ -314,7 +237,6 @@ export default function ClientDashboard({
           </div>
         )}
 
-        {/* Recent messages */}
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
           <div className="px-6 py-4 border-b border-gray-100">
             <h2 className="text-sm font-bold text-gray-900">Мессежийн үйл ажиллагаа</h2>
@@ -345,8 +267,7 @@ export default function ClientDashboard({
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-gray-500">{log.total_tokens.toLocaleString()} токен</p>
-                    <p className="text-xs text-primary font-medium">{log.credits_used} credit</p>
+                    <p className="text-xs text-gray-500">{log.total_tokens.toLocaleString()} token</p>
                   </div>
                 </div>
               ))}

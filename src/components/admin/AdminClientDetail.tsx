@@ -59,7 +59,6 @@ interface Props {
 
 const TX_TYPE_LABEL: Record<string, string> = {
   topup: "Үлдэгдэл нэмэх",
-  message_pack: "Мессеж пакет",
   subscription: "Сарын захиалга",
   manual: "Гараар",
 };
@@ -67,7 +66,6 @@ const TX_TYPE_LABEL: Record<string, string> = {
 export default function AdminClientDetail({ business, logs, transactions, threads }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
-  const [messagesInput, setMessagesInput] = useState("");
   const [balanceInput, setBalanceInput] = useState("");
   const [editForm, setEditForm] = useState({
     name: business.name,
@@ -75,7 +73,7 @@ export default function AdminClientDetail({ business, logs, transactions, thread
     contact_phone: business.contact_phone,
     contact_email: business.contact_email,
     status: business.status,
-    plan_type: business.plans?.plan_type || "credit",
+    plan_type: business.plans?.plan_type || "monthly",
     monthly_tier: business.plans?.monthly_tier || "basic",
     monthly_price: business.plans?.monthly_price || "",
     subscription_price: business.subscription_price || "",
@@ -150,20 +148,6 @@ export default function AdminClientDetail({ business, logs, transactions, thread
     });
   };
 
-  const handleAddMessages = async () => {
-    const amount = parseInt(messagesInput);
-    if (!amount || amount <= 0) return;
-    await callAction("add_credits", { credits: amount });
-    setMessagesInput("");
-  };
-
-  const handleReduceMessages = async () => {
-    const amount = parseInt(messagesInput);
-    if (!amount || amount <= 0) return;
-    await callAction("reduce_credits", { credits: amount });
-    setMessagesInput("");
-  };
-
   const handleAddBalance = async () => {
     const amount = parseInt(balanceInput);
     if (!amount || amount <= 0) return;
@@ -189,7 +173,6 @@ export default function AdminClientDetail({ business, logs, transactions, thread
     setSelectedThread(null);
   };
 
-  const credits = business.credits;
   const virtualBalance = business.virtual_balance || 0;
   const subscriptionPrice = business.subscription_price || 0;
   const isLowBalance = subscriptionPrice > 0 && virtualBalance < subscriptionPrice;
@@ -287,16 +270,12 @@ export default function AdminClientDetail({ business, logs, transactions, thread
           </p>
         </div>
         <div className="card p-4">
-          <p className="text-text-secondary text-xs mb-1">Үлдсэн мессеж</p>
-          <p className="text-2xl font-black text-text-primary">{credits?.balance || 0}</p>
-        </div>
-        <div className="card p-4">
           <p className="text-text-secondary text-xs mb-1">Нийт төлсөн</p>
           <p className="text-2xl font-black text-success">{totalSpent.toLocaleString()}₮</p>
         </div>
         <div className="card p-4">
-          <p className="text-text-secondary text-xs mb-1">Нийт авсан мессеж</p>
-          <p className="text-2xl font-black text-text-primary">{credits?.total_purchased || 0}</p>
+          <p className="text-text-secondary text-xs mb-1">Billing</p>
+          <p className="text-2xl font-black text-text-primary">{business.billing_active ? "Идэвхтэй" : "Унтраалттай"}</p>
         </div>
       </div>
 
@@ -356,37 +335,34 @@ export default function AdminClientDetail({ business, logs, transactions, thread
               <select
                 value={editForm.plan_type}
                 onChange={(e) => setEditForm({ ...editForm, plan_type: e.target.value })}
-                className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-primary"
+              className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-primary"
               >
-                <option value="credit">Мессеж пакет</option>
                 <option value="monthly">Сарын захиалга</option>
               </select>
             </div>
 
-            {editForm.plan_type === "monthly" && (() => {
-              const selected = MONTHLY_PLANS.find((p) => p.tier === editForm.monthly_tier);
-              return (
-                <div className="space-y-2">
-                  <label className="block text-sm text-text-secondary mb-1">Сарын тариф</label>
-                  <select
-                    value={editForm.monthly_tier}
-                    onChange={(e) => setEditForm({ ...editForm, monthly_tier: e.target.value })}
-                    className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-primary"
-                  >
-                    {MONTHLY_PLANS.filter((p) => p.tier !== "enterprise").map((p) => (
-                      <option key={p.tier} value={p.tier}>
-                        {p.nameMn} — {p.price.toLocaleString()}₮/сар — {p.messageLimit.toLocaleString()} мессеж
-                      </option>
-                    ))}
-                  </select>
-                  {selected && selected.tier !== "enterprise" && (
-                    <div className="bg-surface-2 rounded-lg px-3 py-2 text-xs text-text-secondary">
-                      {selected.price.toLocaleString()}₮/сар · {selected.messageLimit.toLocaleString()} мессеж/сар
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
+            <div className="space-y-2">
+              <label className="block text-sm text-text-secondary mb-1">Сарын тариф</label>
+              <select
+                value={editForm.monthly_tier}
+                onChange={(e) => setEditForm({ ...editForm, monthly_tier: e.target.value })}
+                className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-primary"
+              >
+                {MONTHLY_PLANS.filter((p) => p.tier !== "enterprise").map((p) => (
+                  <option key={p.tier} value={p.tier}>
+                    {p.nameMn} — {p.price.toLocaleString()}₮/сар — {p.messageLimit.toLocaleString()} мессеж
+                  </option>
+                ))}
+              </select>
+              {(() => {
+                const selected = MONTHLY_PLANS.find((p) => p.tier === editForm.monthly_tier);
+                return selected && selected.tier !== "enterprise" ? (
+                  <div className="bg-surface-2 rounded-lg px-3 py-2 text-xs text-text-secondary">
+                    {selected.price.toLocaleString()}₮/сар · {selected.messageLimit.toLocaleString()} мессеж/сар
+                  </div>
+                ) : null;
+              })()}
+            </div>
 
             <div>
               <label className="block text-sm text-text-secondary mb-1">Бот тохиргоо</label>
@@ -411,44 +387,6 @@ export default function AdminClientDetail({ business, logs, transactions, thread
           </form>
 
           <div className="space-y-4">
-            {/* Мессеж нэмэх */}
-            <div className="card p-6">
-              <h2 className="font-bold text-text-primary mb-4">Мессеж нэмэх</h2>
-              <div className="flex items-center gap-4 mb-4">
-                <div>
-                  <p className="text-text-secondary text-xs">Үлдсэн</p>
-                  <p className="text-2xl font-black text-gradient">{credits?.balance || 0}</p>
-                </div>
-                <div>
-                  <p className="text-text-secondary text-xs">Нийт авсан</p>
-                  <p className="text-xl font-bold text-text-primary">{credits?.total_purchased || 0}</p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  value={messagesInput}
-                  onChange={(e) => setMessagesInput(e.target.value)}
-                  placeholder="Мессеж тоо"
-                  className="flex-1 bg-surface-2 border border-border rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-primary"
-                />
-                <button
-                  onClick={handleAddMessages}
-                  disabled={loading === "add_credits"}
-                  className="px-4 py-2 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
-                >
-                  {loading === "add_credits" ? "..." : "Нэмэх"}
-                </button>
-                <button
-                  onClick={handleReduceMessages}
-                  disabled={loading === "reduce_credits"}
-                  className="px-4 py-2 bg-danger/10 hover:bg-danger/20 border border-danger/30 disabled:opacity-50 text-danger text-sm font-semibold rounded-lg transition-colors"
-                >
-                  {loading === "reduce_credits" ? "..." : "Хасах"}
-                </button>
-              </div>
-            </div>
-
             {/* Үлдэгдэл нэмэх */}
             <div className={`card p-6 ${isLowBalance ? "border-warning/40" : ""}`}>
               <h2 className="font-bold text-text-primary mb-4">Үлдэгдэл (₮)</h2>
@@ -731,7 +669,6 @@ export default function AdminClientDetail({ business, logs, transactions, thread
                 <tr className="border-b border-border">
                   <th className="text-left text-muted font-medium px-6 py-3">Огноо</th>
                   <th className="text-right text-muted font-medium px-6 py-3">Дүн</th>
-                  <th className="text-right text-muted font-medium px-6 py-3">Мессеж</th>
                   <th className="text-left text-muted font-medium px-6 py-3">Төрөл</th>
                   <th className="text-left text-muted font-medium px-6 py-3">Статус</th>
                 </tr>
@@ -739,7 +676,7 @@ export default function AdminClientDetail({ business, logs, transactions, thread
               <tbody>
                 {transactions.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-text-secondary">
+                    <td colSpan={4} className="px-6 py-8 text-center text-text-secondary">
                       Төлбөр байхгүй байна.
                     </td>
                   </tr>
@@ -751,9 +688,6 @@ export default function AdminClientDetail({ business, logs, transactions, thread
                       </td>
                       <td className="px-6 py-3 text-right text-success font-medium">
                         {tx.amount > 0 ? `${tx.amount.toLocaleString()}₮` : "—"}
-                      </td>
-                      <td className="px-6 py-3 text-right text-accent">
-                        {tx.credits_added > 0 ? tx.credits_added : "—"}
                       </td>
                       <td className="px-6 py-3 text-text-secondary text-xs">
                         {TX_TYPE_LABEL[inferTransactionType(tx)] || tx.payment_method}

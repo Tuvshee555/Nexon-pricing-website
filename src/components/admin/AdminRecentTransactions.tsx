@@ -5,7 +5,6 @@ import { inferTransactionType } from "@/lib/transaction-utils";
 
 const TX_TYPE_LABEL: Record<string, string> = {
   topup: "Үлдэгдэл нэмэх",
-  message_pack: "Мессеж пакет",
   subscription: "Сарын захиалга",
   manual: "Гараар",
 };

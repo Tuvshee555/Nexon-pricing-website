@@ -13,7 +13,6 @@ export async function sendTelegramMessage(text: string): Promise<void> {
   }
 }
 
-// 1. New client registered
 export async function notifyNewUser(email: string, businessName?: string): Promise<void> {
   const date = new Date().toLocaleDateString("mn-MN");
   await sendTelegramMessage(
@@ -24,13 +23,12 @@ export async function notifyNewUser(email: string, businessName?: string): Promi
   );
 }
 
-// 2. Payment received (top-up or message pack)
 export async function notifyPaymentReceived(
   businessName: string,
   amount: number,
-  type: "topup" | "message_pack"
+  type: "topup" | "subscription"
 ): Promise<void> {
-  const typeLabel = type === "topup" ? "Үлдэгдэл нэмэх" : "Мессеж пакет";
+  const typeLabel = type === "topup" ? "Үлдэгдэл нэмэх" : "Сарын захиалга";
   await sendTelegramMessage(
     `💰 <b>Төлбөр хүлээн авлаа!</b>\n\n` +
     `👤 Клиент: <b>${businessName}</b>\n` +
@@ -40,7 +38,6 @@ export async function notifyPaymentReceived(
   );
 }
 
-// 3. Low virtual balance warning
 export async function notifyLowBalance(
   businessName: string,
   balance: number,
@@ -56,24 +53,6 @@ export async function notifyLowBalance(
   );
 }
 
-// 3b. Low message credits warning (business owner alert mirror to admin)
-export async function notifyLowMessageCredits(
-  businessName: string,
-  balance: number,
-  threshold: number,
-  recipientEmail?: string
-): Promise<void> {
-  await sendTelegramMessage(
-    `⚠️ <b>Мессеж кредит багаслаа</b>\n\n` +
-    `👤 Клиент: <b>${businessName}</b>\n` +
-    `📊 Үлдэгдэл: <b>${balance.toLocaleString()}</b>\n` +
-    `🚧 Босго: <b>${threshold.toLocaleString()}</b>\n` +
-    `📧 Мэйл: <code>${recipientEmail || "not-set"}</code>\n` +
-    `❗ Эзэнд сануулга илгээлээ`
-  );
-}
-
-// 4. Client ran out of messages
 export async function notifyOutOfMessages(businessName: string): Promise<void> {
   await sendTelegramMessage(
     `🚫 <b>Мессеж дууслаа!</b>\n\n` +
@@ -83,7 +62,6 @@ export async function notifyOutOfMessages(businessName: string): Promise<void> {
   );
 }
 
-// 5. Monthly subscription deducted
 export async function notifySubscriptionDeducted(
   businessName: string,
   amount: number,
@@ -100,7 +78,6 @@ export async function notifySubscriptionDeducted(
   );
 }
 
-// Contact form
 export async function notifyContactForm(
   name: string,
   phone: string,
@@ -113,20 +90,5 @@ export async function notifyContactForm(
     `📞 Утас: <code>${phone}</code>\n` +
     `📧 И-мэйл: <code>${email}</code>\n` +
     `💬 Мессеж:\n${message}`
-  );
-}
-
-// Legacy alias — used in existing QPay check/callback routes
-export async function notifyCreditspurchased(
-  businessName: string,
-  amount: number,
-  creditsAdded: number
-): Promise<void> {
-  await sendTelegramMessage(
-    `💰 <b>Төлбөр хүлээн авлаа!</b>\n\n` +
-    `👤 Клиент: <b>${businessName}</b>\n` +
-    `💵 Дүн: <b>${amount.toLocaleString()}₮</b>\n` +
-    `📦 Нэмэгдсэн мессеж: <b>${creditsAdded}</b>\n` +
-    `✅ Статус: Амжилттай`
   );
 }

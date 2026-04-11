@@ -14,7 +14,6 @@ interface Client {
   virtual_balance: number;
   subscription_price: number;
   plans: { plan_type: string; monthly_tier?: string; monthly_price?: number } | null;
-  credits: { balance: number } | null;
 }
 
 export default function AdminClientsList({ clients }: { clients: Client[] }) {
@@ -62,8 +61,6 @@ export default function AdminClientsList({ clients }: { clients: Client[] }) {
 
   const getPlanLabel = (plan: Client["plans"]) => {
     if (!plan) return "—";
-    if (plan.plan_type === "credit") return "Мессеж пакет";
-
     const monthlyPlan = MONTHLY_PLANS.find((item) => item.tier === plan.monthly_tier);
     return monthlyPlan ? monthlyPlan.nameMn : "Сарын";
   };
@@ -120,14 +117,13 @@ export default function AdminClientsList({ clients }: { clients: Client[] }) {
               <th className="text-left text-muted font-medium px-6 py-3">Төлөвлөгөө</th>
               <th className="text-left text-muted font-medium px-6 py-3">Статус</th>
               <th className="text-right text-muted font-medium px-6 py-3">Үлдэгдэл (₮)</th>
-              <th className="text-right text-muted font-medium px-6 py-3">Мессеж</th>
               <th className="text-right text-muted font-medium px-6 py-3">Үйлдэл</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-12 text-center text-text-secondary">
+                <td colSpan={6} className="px-6 py-12 text-center text-text-secondary">
                   Хайлтад тохирох клиент олдсонгүй.
                 </td>
               </tr>
@@ -162,9 +158,6 @@ export default function AdminClientsList({ clients }: { clients: Client[] }) {
                     ) : (
                       <span className="text-muted">—</span>
                     )}
-                  </td>
-                  <td className="px-6 py-4 text-right text-accent font-medium">
-                    {client.businessId ? client.credits?.balance ?? 0 : "—"}
                   </td>
                   <td className="px-6 py-4 text-right">
                     {client.businessId ? (

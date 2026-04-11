@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import QRCode from "react-qr-code";
-import { CREDIT_PACKS, MONTHLY_PLANS } from "@/types";
+import { MONTHLY_PLANS } from "@/types";
 import { expireQPayInvoice, startQPayPolling, type QPayInvoice } from "@/lib/qpay-polling";
 
 interface Props {
@@ -14,14 +14,11 @@ interface Props {
   onBack: () => void;
 }
 
-type PlanTab = "credit" | "monthly";
 type PayState = "select" | "qr" | "success" | "expired";
-type PaymentKind = "message_pack" | "subscription";
 
 interface PaymentPayload {
   amount: number;
-  credits?: number;
-  type: PaymentKind;
+  monthlyTier: string;
 }
 
 export default function Step5Plan({
@@ -31,8 +28,6 @@ export default function Step5Plan({
   onComplete,
   onBack,
 }: Props) {
-  const [tab, setTab] = useState<PlanTab>("credit");
-  const [selectedPack, setSelectedPack] = useState(CREDIT_PACKS[1]);
   const [selectedMonthly, setSelectedMonthly] = useState(MONTHLY_PLANS[1]);
   const [payState, setPayState] = useState<PayState>("select");
   const [invoice, setInvoice] = useState<QPayInvoice | null>(null);
@@ -48,28 +43,21 @@ export default function Step5Plan({
     }
   };
 
-  useEffect(() => {
-    return () => {
-      stopPolling();
-    };
-  }, []);
+  useEffect(() => () => stopPolling(), []);
 
   const startPayment = async (payload: PaymentPayload) => {
     setLoading(true);
     stopPolling();
     setLastPayload(payload);
     try {
-      const body: Record<string, unknown> = {
-        businessId,
-        amount: payload.amount,
-        type: payload.type,
-      };
-      if (payload.credits) body.credits = payload.credits;
-
       const res = await fetch("/api/qpay/create-invoice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          businessId,
+          amount: payload.amount,
+          monthlyTier: payload.monthlyTier,
+        }),
       });
 
       const data = await res.json();
@@ -98,17 +86,12 @@ export default function Step5Plan({
   };
 
   const handlePay = () => {
-    const amount = tab === "credit" ? selectedPack.amount : selectedMonthly.price;
-    const payload: PaymentPayload =
-      tab === "credit"
-        ? { amount, credits: selectedPack.credits, type: "message_pack" }
-        : { amount, type: "subscription" };
-
+    const amount = selectedMonthly.price;
     if (!amount) {
-      toast.info("Enterprise төлөвлөгөөний хувьд бидэнтэй холбоо барина уу.");
+      toast.info("Enterprise төлөвлөгөөний хувьд бидэнтэй холбогдоно уу.");
       return;
     }
-    void startPayment(payload);
+    void startPayment({ amount, monthlyTier: selectedMonthly.tier });
   };
 
   const handleManualCheck = async () => {
@@ -169,7 +152,7 @@ export default function Step5Plan({
       <div className="space-y-5 text-center">
         <div className="w-16 h-16 bg-warning/10 border border-warning/30 rounded-full flex items-center justify-center mx-auto">
           <svg className="w-8 h-8 text-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M4.93 19h14.14c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.2 16c-.77 1.33.19 3 1.73 3z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01m-6.938 4h13.856c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.2 16c-.77 1.33.19 3 1.73 3z" />
           </svg>
         </div>
         <div>
@@ -252,75 +235,34 @@ export default function Step5Plan({
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-bold text-text-primary mb-1">Төлөвлөгөө сонгох</h2>
-        <p className="text-text-secondary text-sm">Таны хэрэгцээнд тохирсон төлөвлөгөөг сонгоно уу.</p>
+        <p className="text-text-secondary text-sm">Танай хэрэгцээнд тохирсон сарын төлөвлөгөөг сонгоно уу.</p>
       </div>
 
-      <div className="flex gap-2 p-1 bg-surface-2 rounded-xl">
-        {(["credit", "monthly"] as PlanTab[]).map((type) => (
+      <div className="space-y-2">
+        {MONTHLY_PLANS.filter((plan) => plan.tier !== "enterprise").map((plan) => (
           <button
-            key={type}
-            onClick={() => setTab(type)}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-              tab === type ? "bg-primary text-white" : "text-text-secondary hover:text-text-primary"
+            key={plan.tier}
+            type="button"
+            onClick={() => setSelectedMonthly(plan)}
+            className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${
+              selectedMonthly.tier === plan.tier
+                ? "bg-primary/10 border-primary/50"
+                : "bg-surface-2 border-border hover:border-primary/30"
             }`}
           >
-            {type === "credit" ? "Мессеж пакет" : "Сарын захиалга"}
+            <div className="text-left">
+              <p className={`font-semibold ${selectedMonthly.tier === plan.tier ? "text-primary" : "text-text-primary"}`}>
+                {plan.nameMn}
+              </p>
+              <p className="text-xs text-muted">{plan.messageLimit.toLocaleString()} мессеж/сар</p>
+              {plan.popular ? (
+                <span className="text-xs bg-accent/20 text-accent px-2 py-0.5 rounded-full mt-1 inline-block">Алдартай</span>
+              ) : null}
+            </div>
+            <p className="text-lg font-bold text-text-primary">{plan.price.toLocaleString()}₮/сар</p>
           </button>
         ))}
       </div>
-
-      {tab === "credit" ? (
-        <div className="space-y-2">
-          {CREDIT_PACKS.map((pack) => (
-            <button
-              key={pack.amount}
-              type="button"
-              onClick={() => setSelectedPack(pack)}
-              className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${
-                selectedPack.amount === pack.amount
-                  ? "bg-primary/10 border-primary/50"
-                  : "bg-surface-2 border-border hover:border-primary/30"
-              }`}
-            >
-              <div className="text-left">
-                <p className={`font-semibold ${selectedPack.amount === pack.amount ? "text-primary" : "text-text-primary"}`}>
-                  {pack.credits} мессеж
-                </p>
-                {pack.popular ? (
-                  <span className="text-xs bg-accent/20 text-accent px-2 py-0.5 rounded-full">Алдартай</span>
-                ) : null}
-              </div>
-              <p className="text-lg font-bold text-text-primary">{pack.amount.toLocaleString()}₮</p>
-            </button>
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {MONTHLY_PLANS.filter((plan) => plan.tier !== "enterprise").map((plan) => (
-            <button
-              key={plan.tier}
-              type="button"
-              onClick={() => setSelectedMonthly(plan)}
-              className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${
-                selectedMonthly.tier === plan.tier
-                  ? "bg-primary/10 border-primary/50"
-                  : "bg-surface-2 border-border hover:border-primary/30"
-              }`}
-            >
-              <div className="text-left">
-                <p className={`font-semibold ${selectedMonthly.tier === plan.tier ? "text-primary" : "text-text-primary"}`}>
-                  {plan.nameMn}
-                </p>
-                <p className="text-xs text-muted">{plan.messageLimit.toLocaleString()} мессеж/сар</p>
-                {plan.popular ? (
-                  <span className="text-xs bg-accent/20 text-accent px-2 py-0.5 rounded-full mt-1 inline-block">Алдартай</span>
-                ) : null}
-              </div>
-              <p className="text-lg font-bold text-text-primary">{plan.price.toLocaleString()}₮/сар</p>
-            </button>
-          ))}
-        </div>
-      )}
 
       <div className="flex gap-3">
         <button

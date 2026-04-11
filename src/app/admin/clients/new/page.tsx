@@ -15,9 +15,8 @@ export default function NewClientPage() {
     password: "",
     businessName: "",
     platforms: [] as string[],
-    planType: "credit",
+    planType: "monthly",
     monthlyTier: "basic",
-    initialCredits: "",
     botPrompt: "",
     contactPhone: "",
     contactEmail: "",
@@ -134,7 +133,6 @@ export default function NewClientPage() {
             onChange={(e) => setForm({ ...form, planType: e.target.value })}
             className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2.5 text-text-primary text-sm focus:outline-none focus:border-primary"
           >
-            <option value="credit">Мессеж пакет</option>
             <option value="monthly">Сарын захиалга</option>
           </select>
         </div>
@@ -153,19 +151,6 @@ export default function NewClientPage() {
                 </option>
               ))}
             </select>
-          </div>
-        )}
-
-        {form.planType === "credit" && (
-          <div>
-            <label className="block text-sm text-text-secondary mb-1.5">Анхны мессеж тоо</label>
-            <input
-              type="number"
-              value={form.initialCredits}
-              onChange={(e) => setForm({ ...form, initialCredits: e.target.value })}
-              className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2.5 text-text-primary text-sm focus:outline-none focus:border-primary"
-              placeholder="0"
-            />
           </div>
         )}
 

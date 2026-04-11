@@ -39,12 +39,9 @@ export default async function AdminClientsPage() {
 
   const businessIds = businesses.map((b) => b.id as string);
 
-  const [plans, credits] = businessIds.length
-    ? await Promise.all([
-        sql`SELECT business_id, plan_type, monthly_tier, monthly_price FROM plans WHERE business_id = ANY(${businessIds}::uuid[])`,
-        sql`SELECT business_id, balance FROM credits WHERE business_id = ANY(${businessIds}::uuid[])`,
-      ])
-    : [[], []];
+  const plans = businessIds.length
+    ? await sql`SELECT business_id, plan_type, monthly_tier, monthly_price FROM plans WHERE business_id = ANY(${businessIds}::uuid[])`
+    : [];
 
   const plansByBusinessId = new Map<string, typeof plans[0]>();
   for (const p of plans) {
@@ -53,15 +50,9 @@ export default async function AdminClientsPage() {
     }
   }
 
-  const creditsByBusinessId = new Map<string, typeof credits[0]>();
-  for (const c of credits) {
-    creditsByBusinessId.set(c.business_id as string, c);
-  }
-
   const clients = users.map((user) => {
     const business = businessesByUserId.get(user.id as string) ?? null;
     const plan = business ? plansByBusinessId.get(business.id as string) ?? null : null;
-    const credit = business ? creditsByBusinessId.get(business.id as string) ?? null : null;
 
     const monthlyPlan = plan?.monthly_tier
       ? MONTHLY_PLANS.find((p) => p.tier === plan.monthly_tier) ?? null
@@ -84,7 +75,6 @@ export default async function AdminClientsPage() {
             nameMn: monthlyPlan?.nameMn,
           }
         : null,
-      credits: credit ? { balance: credit.balance as number } : null,
     };
   });
 

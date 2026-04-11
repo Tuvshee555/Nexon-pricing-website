@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { checkPayment } from "@/lib/qpay";
 import { notifyPaymentReceived } from "@/lib/telegram";
-import { addCredits, addVirtualBalance } from "@/lib/credits";
-import { inferTransactionType } from "@/lib/transactions";
+import { addVirtualBalance } from "@/lib/credits";
 
 export const dynamic = "force-dynamic";
 
@@ -32,14 +31,9 @@ export async function GET(request: Request) {
       }
 
       const paymentId = result.rows[0].payment_id;
-      const txType = inferTransactionType(tx as { transaction_type?: string; payment_method?: string; credits_added?: number; amount?: number });
       const businessName = (tx.business_name as string) || "Unknown";
 
-      if (txType === "topup") {
-        await addVirtualBalance(tx.business_id as string, tx.amount as number);
-      } else {
-        await addCredits(tx.business_id as string, tx.credits_added as number);
-      }
+      await addVirtualBalance(tx.business_id as string, tx.amount as number);
 
       await sql`
         UPDATE transactions
@@ -60,9 +54,9 @@ export async function GET(request: Request) {
         `;
       }
 
-      await notifyPaymentReceived(businessName, tx.amount as number, txType as "topup" | "message_pack");
+      await notifyPaymentReceived(businessName, tx.amount as number, (tx.transaction_type as string) === "topup" ? "topup" : "subscription");
 
-      return NextResponse.json({ paid: true, type: txType });
+      return NextResponse.json({ paid: true, type: tx.transaction_type || "subscription" });
     }
 
     return NextResponse.json({ paid: false });

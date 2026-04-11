@@ -1,4 +1,4 @@
-export type TransactionKind = "topup" | "subscription" | "message_pack" | "manual";
+export type TransactionKind = "topup" | "subscription" | "manual";
 
 export interface TransactionLike {
   amount?: number | null;
@@ -11,7 +11,6 @@ function isTransactionKind(value: string | null | undefined): value is Transacti
   return (
     value === "topup" ||
     value === "subscription" ||
-    value === "message_pack" ||
     value === "manual"
   );
 }
@@ -21,7 +20,7 @@ export function inferTransactionType(transaction: TransactionLike): TransactionK
     return transaction.transaction_type;
   }
   if (transaction.payment_method === "qpay") {
-    return (transaction.credits_added || 0) > 0 ? "message_pack" : "topup";
+    return "subscription";
   }
   if ((transaction.amount || 0) > 0) {
     return "topup";

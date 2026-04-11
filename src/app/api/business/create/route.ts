@@ -56,8 +56,7 @@ export async function POST(request: Request) {
   const businessId = newBiz.id as string;
 
   await Promise.all([
-    sql`INSERT INTO credits (business_id, balance, total_purchased) VALUES (${businessId}, 0, 0)`,
-    sql`INSERT INTO plans (business_id, plan_type, billing_cycle_start) VALUES (${businessId}, 'credit', ${new Date().toISOString().split("T")[0]})`,
+    sql`INSERT INTO plans (business_id, plan_type, monthly_tier, monthly_message_limit, monthly_price, billing_cycle_start) VALUES (${businessId}, 'monthly', 'basic', 600, 79000, ${new Date().toISOString().split("T")[0]})`,
   ]);
 
   return NextResponse.json({ businessId });

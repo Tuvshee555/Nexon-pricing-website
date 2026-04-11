@@ -4,7 +4,7 @@ import { authOptions } from "@/auth";
 import { sql } from "@/lib/db";
 import ClientDashboard from "@/components/dashboard/ClientDashboard";
 import { needsOnboarding } from "@/lib/onboarding";
-import type { Business, Plan, Credits, MessageLog } from "@/types";
+import type { Business, Plan, MessageLog } from "@/types";
 
 export default async function DashboardPage({
   searchParams,
@@ -36,27 +36,22 @@ export default async function DashboardPage({
   startOfMonth.setDate(1);
   startOfMonth.setHours(0, 0, 0, 0);
 
-  const [plans, credits, logs, monthlyLogs, recentTransactions] = await Promise.all([
+  const [plans, logs, monthlyLogs, recentTransactions] = await Promise.all([
     sql`SELECT * FROM plans WHERE business_id = ${business.id as string} LIMIT 1`,
-    sql`SELECT * FROM credits WHERE business_id = ${business.id as string} LIMIT 1`,
     sql`SELECT * FROM message_logs WHERE business_id = ${business.id as string} ORDER BY logged_at DESC LIMIT 10`,
     sql`SELECT message_count, credits_used FROM message_logs WHERE business_id = ${business.id as string} AND logged_at >= ${startOfMonth.toISOString()}`,
     sql`SELECT * FROM transactions WHERE business_id = ${business.id as string} AND status = 'paid' ORDER BY paid_at DESC LIMIT 5`,
   ]);
 
   const plan = plans[0] ?? null;
-  const credit = credits[0] ?? null;
   const messagesThisMonth = monthlyLogs.reduce((sum, l) => sum + (l.message_count as number), 0);
-  const creditsUsedThisMonth = monthlyLogs.reduce((sum, l) => sum + (l.credits_used as number), 0);
 
   return (
     <ClientDashboard
       business={business as unknown as Business}
       plan={plan as unknown as Plan | null}
-      credits={credit as unknown as Credits | null}
       logs={logs as unknown as MessageLog[]}
       messagesThisMonth={messagesThisMonth}
-      creditsUsedThisMonth={creditsUsedThisMonth}
       recentTransactions={recentTransactions as unknown as { id: string; amount: number; credits_added: number; transaction_type?: string; status: string; paid_at?: string }[]}
       showWelcome={!!params.welcome}
     />

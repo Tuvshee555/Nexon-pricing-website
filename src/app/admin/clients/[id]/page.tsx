@@ -13,10 +13,9 @@ export default async function AdminClientDetailPage({
   const business = businesses[0] ?? null;
   if (!business) notFound();
 
-  const [userRows, planRows, creditRows, platformRows, logsRows, txRows, threadRows] = await Promise.all([
+  const [userRows, planRows, platformRows, logsRows, txRows, threadRows] = await Promise.all([
     sql`SELECT id, email FROM users WHERE id = ${business.user_id as string} LIMIT 1`,
     sql`SELECT * FROM plans WHERE business_id = ${id} LIMIT 1`,
-    sql`SELECT * FROM credits WHERE business_id = ${id} LIMIT 1`,
     sql`SELECT id, platform, page_name, page_id, instagram_account_id FROM platform_accounts WHERE business_id = ${id}`,
     sql`SELECT * FROM message_logs WHERE business_id = ${id} ORDER BY logged_at DESC LIMIT 20`,
     sql`SELECT * FROM transactions WHERE business_id = ${id} ORDER BY created_at DESC LIMIT 20`,
@@ -27,7 +26,6 @@ export default async function AdminClientDetailPage({
     ...business,
     users: userRows[0] || null,
     plans: planRows[0] || null,
-    credits: creditRows[0] || null,
     platform_accounts: platformRows,
   } as unknown as Parameters<typeof AdminClientDetail>[0]["business"];
 

@@ -18,9 +18,8 @@ export default function SetupBusinessForm({ userId, email }: Props) {
   const [form, setForm] = useState({
     businessName: "",
     platforms: [] as string[],
-    planType: "credit",
+    planType: "monthly",
     monthlyTier: "basic",
-    initialCredits: "",
     botPrompt: "",
   });
 
@@ -44,17 +43,16 @@ export default function SetupBusinessForm({ userId, email }: Props) {
       const res = await fetch("/api/admin/client-action", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "setup_business",
-          userId,
-          businessName: form.businessName,
-          platforms: form.platforms,
-          planType: form.planType,
-          monthlyTier: form.monthlyTier,
-          initialCredits: form.initialCredits,
-          botPrompt: form.botPrompt,
-        }),
-      });
+          body: JSON.stringify({
+            action: "setup_business",
+            userId,
+            businessName: form.businessName,
+            platforms: form.platforms,
+            planType: form.planType,
+            monthlyTier: form.monthlyTier,
+            botPrompt: form.botPrompt,
+          }),
+        });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Алдаа гарлаа");
@@ -126,7 +124,6 @@ export default function SetupBusinessForm({ userId, email }: Props) {
             onChange={(e) => setForm({ ...form, planType: e.target.value })}
             className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2.5 text-text-primary text-sm focus:outline-none focus:border-primary"
           >
-            <option value="credit">Мессеж пакет</option>
             <option value="monthly">Сарын захиалга</option>
           </select>
         </div>
@@ -150,19 +147,6 @@ export default function SetupBusinessForm({ userId, email }: Props) {
                 {selectedPlan.price.toLocaleString()}₮/сар, {selectedPlan.messageLimit.toLocaleString()} мессеж
               </p>
             )}
-          </div>
-        )}
-
-        {form.planType === "credit" && (
-          <div>
-            <label className="block text-sm text-text-secondary mb-1.5">Анхны мессеж тоо</label>
-            <input
-              type="number"
-              value={form.initialCredits}
-              onChange={(e) => setForm({ ...form, initialCredits: e.target.value })}
-              className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2.5 text-text-primary text-sm focus:outline-none focus:border-primary"
-              placeholder="0"
-            />
           </div>
         )}
 
