@@ -47,7 +47,7 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-screen bg-background flex">
       <DashboardSidebar user={{ email: session.user.email, name: session.user.name }} role={role} />
-      <main className="flex-1 lg:ml-64 p-6">{children}</main>
+      <main className="flex-1 lg:ml-60 p-6 pt-6">{children}</main>
     </div>
   );
 }

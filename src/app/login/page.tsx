@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -36,86 +37,72 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = async () => {
+    setGoogleLoading(true);
     await signIn("google", { callbackUrl: "/dashboard" });
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-block">
-            <span className="text-3xl font-black text-gradient">NEXON</span>
-          </Link>
-          <p className="text-text-secondary mt-2 text-sm">AI-powered chatbot platform</p>
+    <div className="min-h-screen flex">
+      {/* Left panel — brand */}
+      <div className="hidden lg:flex lg:w-[45%] flex-col justify-between p-12 bg-gradient-to-br from-[#0F4FE8] to-[#4F46E5] text-white">
+        <Link href="/" className="flex items-center gap-3">
+          <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+            <span className="text-white font-black text-base">N</span>
+          </div>
+          <span className="text-xl font-black tracking-tight">NEXON</span>
+        </Link>
+
+        <div>
+          <h2 className="text-4xl font-black leading-tight mb-4">
+            Бизнесийн AI чатбот<br />платформ
+          </h2>
+          <p className="text-white/70 text-lg leading-relaxed mb-8">
+            Instagram болон Facebook Messenger-т автоматаар хариулдаг ухаалаг чатбот.
+          </p>
+
+          {/* Feature list */}
+          <div className="space-y-3">
+            {[
+              "24/7 автомат хариулт",
+              "Instagram & Messenger дэмжлэг",
+              "AI-д суурилсан яриа",
+            ].map((f) => (
+              <div key={f} className="flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <span className="text-white/85 text-sm font-medium">{f}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div className="card p-8">
-          <h1 className="text-2xl font-bold text-text-primary mb-6 text-center">
-            {t("login_title")}
-          </h1>
+        <p className="text-white/40 text-xs">© 2025 Nexon Digital Nova. Бүх эрх хуулиар хамгаалагдсан.</p>
+      </div>
 
-          {error && (
-            <div className="bg-danger/10 border border-danger/30 text-danger rounded-lg p-3 mb-4 text-sm">
-              {error}
-            </div>
-          )}
+      {/* Right panel — form */}
+      <div className="flex-1 flex flex-col justify-center items-center p-8 bg-white">
+        {/* Mobile logo */}
+        <Link href="/" className="lg:hidden flex items-center gap-2 mb-8">
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+            <span className="text-white font-black text-sm">N</span>
+          </div>
+          <span className="text-xl font-black text-gradient">NEXON</span>
+        </Link>
 
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1.5">
-                {t("login_email")}
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full bg-surface-2 border border-border rounded-lg px-4 py-2.5 text-text-primary placeholder-muted focus:outline-none focus:border-primary transition-colors"
-                placeholder="you@example.com"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1.5">
-                {t("login_password")}
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full bg-surface-2 border border-border rounded-lg px-4 py-2.5 text-text-primary placeholder-muted focus:outline-none focus:border-primary transition-colors"
-                placeholder="••••••••"
-              />
-            </div>
-
-            <div className="flex justify-end">
-              <Link href="/forgot-password" className="text-xs text-accent hover:text-accent/80 transition-colors">
-                {t("login_forgot_password")}
-              </Link>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-primary hover:bg-primary/90 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg transition-colors"
-            >
-              {loading ? "..." : t("login_submit")}
-            </button>
-          </form>
-
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="bg-surface px-3 text-muted">эсвэл</span>
-            </div>
+        <div className="w-full max-w-sm">
+          <div className="mb-8">
+            <h1 className="text-2xl font-black text-gray-900 mb-1">Нэвтрэх</h1>
+            <p className="text-gray-500 text-sm">Бүртгэлдээ нэвтэрч орно уу</p>
           </div>
 
+          {/* Google button */}
           <button
             onClick={handleGoogleLogin}
-            className="w-full border border-border hover:border-primary/50 bg-surface-2 hover:bg-surface text-text-primary font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center gap-3"
+            disabled={googleLoading}
+            className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors mb-4 shadow-sm disabled:opacity-60"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -123,13 +110,71 @@ export default function LoginPage() {
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
             </svg>
-            {t("login_google")}
+            {googleLoading ? "Түр хүлээнэ үү..." : "Google-ээр нэвтрэх"}
           </button>
 
-          <p className="text-center text-sm text-text-secondary mt-6">
-            {t("login_no_account")}{" "}
-            <Link href="/register" className="text-accent hover:text-accent/80 font-medium transition-colors">
-              {t("login_register")}
+          <div className="relative my-5">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-200" />
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-white px-3 text-gray-400">эсвэл и-мэйлээр</span>
+            </div>
+          </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg p-3 mb-4 text-sm">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                И-мэйл
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all text-sm"
+                placeholder="you@example.com"
+              />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-gray-700">
+                  Нууц үг
+                </label>
+                <Link href="/forgot-password" className="text-xs text-primary hover:text-primary/80 transition-colors">
+                  Мартсан?
+                </Link>
+              </div>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all text-sm"
+                placeholder="••••••••"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-primary hover:bg-primary/90 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-colors text-sm shadow-sm"
+            >
+              {loading ? "Нэвтэрч байна..." : "Нэвтрэх"}
+            </button>
+          </form>
+
+          <p className="text-center text-sm text-gray-500 mt-6">
+            Бүртгэлгүй юу?{" "}
+            <Link href="/register" className="text-primary hover:text-primary/80 font-semibold transition-colors">
+              Бүртгүүлэх
             </Link>
           </p>
         </div>

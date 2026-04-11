@@ -25,13 +25,14 @@ export default function RootLayout({
         <LanguageProvider>
           {children}
           <Toaster
-            theme="dark"
+            theme="light"
             position="top-right"
             toastOptions={{
               style: {
-                background: "#111118",
-                border: "1px solid #1E1E2E",
-                color: "#F0F0FF",
+                background: "#FFFFFF",
+                border: "1px solid #E2E8F0",
+                color: "#111827",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
               },
             }}
           />

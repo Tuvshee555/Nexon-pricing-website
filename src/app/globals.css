@@ -15,8 +15,8 @@ html {
 }
 
 body {
-  color: #F0F0FF;
-  background: #0A0A0F;
+  color: #111827;
+  background: #F7F8FA;
   font-family: 'Inter', system-ui, sans-serif;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
@@ -24,14 +24,14 @@ body {
 
 @layer utilities {
   .text-gradient {
-    background: linear-gradient(135deg, #0F4FE8, #00D4FF);
+    background: linear-gradient(135deg, #0F4FE8, #4F46E5);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
   .text-gradient-animated {
-    background: linear-gradient(270deg, #0F4FE8, #00D4FF, #7B61FF, #0F4FE8);
+    background: linear-gradient(270deg, #0F4FE8, #4F46E5, #7B61FF, #0F4FE8);
     background-size: 300% 300%;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -40,33 +40,34 @@ body {
   }
 
   .glass {
-    background: rgba(17, 17, 24, 0.8);
+    background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(12px);
-    border: 1px solid rgba(30, 30, 46, 0.8);
+    border: 1px solid rgba(226, 232, 240, 0.8);
   }
 
   .glass-strong {
-    background: rgba(10, 10, 15, 0.85);
+    background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(20px);
     border: 1px solid rgba(15, 79, 232, 0.15);
   }
 
   .card {
-    background: #111118;
-    border: 1px solid #1E1E2E;
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
     border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
   }
 
   .glow-primary {
-    box-shadow: 0 0 30px rgba(15, 79, 232, 0.3);
+    box-shadow: 0 4px 20px rgba(15, 79, 232, 0.15);
   }
 
   .glow-primary-lg {
-    box-shadow: 0 0 60px rgba(15, 79, 232, 0.4), 0 0 120px rgba(0, 212, 255, 0.15);
+    box-shadow: 0 8px 40px rgba(15, 79, 232, 0.2), 0 4px 12px rgba(79, 70, 229, 0.1);
   }
 
   .glow-accent {
-    box-shadow: 0 0 30px rgba(0, 212, 255, 0.2);
+    box-shadow: 0 4px 20px rgba(79, 70, 229, 0.15);
   }
 
   .scrollbar-hide::-webkit-scrollbar {
@@ -104,7 +105,7 @@ body {
   /* Animated gradient border */
   .gradient-border {
     position: relative;
-    background: #111118;
+    background: #FFFFFF;
   }
 
   .gradient-border::before {
@@ -168,10 +169,10 @@ body {
   width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0A0A0F;
+  background: #F3F4F6;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1E1E2E;
+  background: #CBD5E1;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
