@@ -17,22 +17,13 @@ interface Props {
   onSkip: () => void;
 }
 
-export default function Step2Facebook({
-  businessId,
-  fbConnected,
-  fbError,
-  onNext,
-  onSkip,
-}: Props) {
+export default function Step2Facebook({ businessId, fbConnected, fbError, onNext, onSkip }: Props) {
   const [pages, setPages] = useState<FacebookPageOption[]>([]);
-  const [selectedPageId, setSelectedPageId] = useState("");
   const [loading, setLoading] = useState(false);
-  const [subscribing, setSubscribing] = useState(false);
+  const [connecting, setConnecting] = useState<string | null>(null);
 
   useEffect(() => {
-    if (fbConnected) {
-      fetchPages();
-    }
+    if (fbConnected) fetchPages();
   }, [fbConnected]);
 
   const fetchPages = async () => {
@@ -52,169 +43,161 @@ export default function Step2Facebook({
     window.location.href = `/api/facebook/auth?businessId=${businessId}`;
   };
 
-  const handleSubscribe = async () => {
-    if (!selectedPageId) {
-      toast.error("Facebook хуудас сонгоно уу");
-      return;
-    }
-
-    const selectedPage = pages.find((p) => p.id === selectedPageId);
-    setSubscribing(true);
+  const handleConnect = async (page: FacebookPageOption) => {
+    setConnecting(page.id);
     try {
       const res = await fetch("/api/facebook/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          pageId: selectedPageId,
-          businessId,
-          connectInstagram: false,
-        }),
+        body: JSON.stringify({ pageId: page.id, businessId, connectInstagram: false }),
       });
-
       const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.error || "Алдаа гарлаа");
-        return;
-      }
-
-      toast.success(`"${selectedPage?.name}" хуудас холбогдлоо`);
-      onNext(selectedPage?.name || "", selectedPageId);
+      if (!res.ok) { toast.error(data.error || "Алдаа гарлаа"); return; }
+      toast.success(`"${page.name}" холбогдлоо`);
+      onNext(page.name, page.id);
     } catch {
       toast.error("Холболтын алдаа гарлаа");
     } finally {
-      setSubscribing(false);
+      setConnecting(null);
     }
   };
+
+  // Avatar initials color based on first char
+  const avatarColor = (name: string) => {
+    const colors = [
+      "bg-blue-500", "bg-indigo-500", "bg-purple-500", "bg-pink-500",
+      "bg-red-500", "bg-orange-500", "bg-green-500", "bg-teal-500",
+    ];
+    return colors[(name.charCodeAt(0) || 0) % colors.length];
+  };
+
+  if (!fbConnected) {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-2xl font-black text-gray-900 mb-1">Facebook хуудас холбох</h1>
+          <p className="text-gray-500 text-sm">
+            Facebook-д нэвтэрч, бизнес хуудсаа сонгосноор Messenger автоматаар ажиллана.
+          </p>
+        </div>
+
+        {fbError && (
+          <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-4 text-sm">
+            {fbError === "fb_denied"
+              ? "Facebook-ийн зөвшөөрлийг цуцалсан байна. Дахин оролдоно уу."
+              : "Facebook холболтод алдаа гарлаа. Дахин оролдоно уу."}
+          </div>
+        )}
+
+        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-700">
+          Facebook нэвтрэлтийн дараа таны бүх бизнес хуудсуудыг харуулна. Та аль нэгийг нь сонгон холбоно.
+        </div>
+
+        <button
+          onClick={handleConnectFacebook}
+          className="w-full flex items-center justify-center gap-3 bg-[#1877F2] hover:bg-[#1565C0] text-white font-semibold px-6 py-3.5 rounded-xl transition-colors shadow-sm text-sm"
+        >
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+          </svg>
+          Facebook-ээр нэвтрэх
+        </button>
+
+        <button onClick={onSkip} className="w-full text-sm text-gray-400 hover:text-gray-600 py-2 transition-colors">
+          Одоохондоо алгасах →
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold text-text-primary mb-1">Facebook хуудас холбох</h2>
-        <p className="text-text-secondary text-sm">
-          Таны Facebook бизнес хуудастай холбосноор таны хэрэглэгчдэд автоматаар хариулна.
-        </p>
+        <h1 className="text-2xl font-black text-gray-900 mb-1">Facebook хуудас холбох</h1>
       </div>
 
-      {fbError && (
-        <div className="bg-danger/10 border border-danger/30 text-danger rounded-xl p-4 text-sm">
-          {fbError === "fb_denied"
-            ? "Facebook-ийн зөвшөөрлийг цуцалсан байна. Дахин оролдоно уу."
-            : "Facebook холболтод алдаа гарлаа. Дахин оролдоно уу."}
+      {loading ? (
+        <div className="flex items-center justify-center py-16 gap-3 text-gray-400 text-sm">
+          <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          Хуудсуудыг ачааллаж байна...
         </div>
-      )}
-
-      {!fbConnected ? (
-        <div className="space-y-4">
-          <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4">
-            <p className="text-sm text-text-secondary">
-              Facebook-д нэвтрэн таны бизнес хуудасны мэдээлэлд хандах зөвшөөрөл авна.
-              Бид зөвхөн мессеж хариулах зөвшөөрөл хүснэ.
-            </p>
+      ) : pages.length === 0 ? (
+        <div className="py-12 text-center">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
           </div>
+          <p className="text-gray-700 font-semibold mb-1">Хуудас олдсонгүй</p>
+          <p className="text-gray-400 text-sm mb-5">Facebook бизнес хуудас үүсгэсэн байх шаардлагатай.</p>
           <button
             onClick={handleConnectFacebook}
-            className="w-full flex items-center justify-center gap-3 bg-[#1877F2] hover:bg-[#1565C0] text-white font-semibold px-6 py-3 rounded-xl transition-colors"
+            className="text-primary hover:text-primary/80 text-sm font-semibold transition-colors"
           >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-            </svg>
-            Facebook-ээр нэвтрэх
-          </button>
-          <button
-            onClick={onSkip}
-            className="w-full text-sm text-muted hover:text-text-secondary py-2 transition-colors"
-          >
-            Одоохондоо алгасах →
+            Дахин оролдох
           </button>
         </div>
       ) : (
-        <div className="space-y-4">
-          {loading ? (
-            <div className="flex items-center justify-center py-8 text-text-secondary text-sm gap-2">
-              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-              Хуудсуудыг ачааллаж байна...
-            </div>
-          ) : pages.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-text-secondary text-sm mb-4">
-                Facebook хуудас олдсонгүй. Бизнес хуудас үүсгэсэн байх шаардлагатай.
-              </p>
-              <button
-                onClick={handleConnectFacebook}
-                className="text-primary hover:text-primary/80 text-sm font-medium"
-              >
-                Дахин оролдох
-              </button>
-            </div>
-          ) : (
-            <>
-              <p className="text-sm text-text-secondary">Холбох хуудсаа сонгоно уу:</p>
-              <div className="space-y-2">
-                {pages.map((page) => (
-                  <button
-                    key={page.id}
-                    type="button"
-                    onClick={() => setSelectedPageId(page.id)}
-                    className={`w-full flex items-center gap-3 p-4 rounded-xl border transition-all text-left ${
-                      selectedPageId === page.id
-                        ? "bg-primary/10 border-primary/50"
-                        : "bg-surface-2 border-border hover:border-primary/30"
-                    }`}
-                  >
-                    <div className="w-10 h-10 rounded-full bg-[#1877F2]/20 flex items-center justify-center shrink-0">
-                      <svg className="w-5 h-5 text-[#1877F2]" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="font-medium text-text-primary">{page.name}</p>
-                      {page.category && (
-                        <p className="text-xs text-muted">{page.category}</p>
-                      )}
-                    </div>
-                    {selectedPageId === page.id && (
-                      <svg className="w-5 h-5 text-primary ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </button>
-                ))}
-              </div>
+        <>
+          <p className="text-sm text-gray-500">
+            Таны удирдаж буй <span className="font-semibold text-gray-700">{pages.length} Facebook хуудас</span> олдлоо.
+          </p>
 
-              <button
-                onClick={handleSubscribe}
-                disabled={!selectedPageId || subscribing}
-                className="w-full bg-primary hover:bg-primary/90 disabled:opacity-50 text-white font-semibold px-6 py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
+          <div className="border border-gray-200 rounded-2xl overflow-hidden">
+            {pages.map((page, i) => (
+              <div
+                key={page.id}
+                className={`flex items-center gap-4 px-5 py-4 ${
+                  i !== pages.length - 1 ? "border-b border-gray-100" : ""
+                }`}
               >
-                {subscribing ? (
-                  <>
-                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Холбож байна...
-                  </>
-                ) : (
-                  <>
-                    Хуудас холбох
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </>
-                )}
-              </button>
-              <button
-                onClick={onSkip}
-                className="w-full text-sm text-muted hover:text-text-secondary py-2 transition-colors"
-              >
-                Одоохондоо алгасах →
-              </button>
-            </>
-          )}
-        </div>
+                {/* Avatar */}
+                <div className={`w-10 h-10 rounded-full ${avatarColor(page.name)} flex items-center justify-center flex-shrink-0`}>
+                  <span className="text-white font-bold text-sm">{page.name[0]?.toUpperCase()}</span>
+                </div>
+
+                {/* Name */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{page.name}</p>
+                  {page.category && <p className="text-xs text-gray-400">{page.category}</p>}
+                </div>
+
+                {/* Connect button */}
+                <button
+                  onClick={() => handleConnect(page)}
+                  disabled={connecting === page.id}
+                  className="flex-shrink-0 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white text-sm font-semibold px-5 py-2 rounded-xl transition-colors"
+                >
+                  {connecting === page.id ? "Холбож байна..." : "Холбох"}
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* Helper links like ManyChat */}
+          <div className="flex flex-wrap gap-4 text-sm">
+            <button
+              onClick={handleConnectFacebook}
+              className="text-primary hover:text-primary/80 font-medium transition-colors"
+            >
+              Хуудсаа харахгүй байна
+            </button>
+            <span className="text-gray-300">·</span>
+            <button
+              onClick={fetchPages}
+              className="text-primary hover:text-primary/80 font-medium transition-colors"
+            >
+              Жагсаалт шинэчлэх
+            </button>
+            <span className="text-gray-300">·</span>
+            <button onClick={onSkip} className="text-gray-400 hover:text-gray-600 transition-colors">
+              Алгасах
+            </button>
+          </div>
+        </>
       )}
     </div>
   );
