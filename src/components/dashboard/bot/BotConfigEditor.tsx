@@ -24,19 +24,22 @@ interface Props {
 }
 
 export default function BotConfigEditor({
+  businessId,
   botName: initialBotName,
   botPrompt: initialBotPrompt,
   welcomeMessage: initialWelcomeMessage,
   botTone: initialTone,
   status: initialStatus,
   knowledgeLoaded: initialKnowledgeLoaded,
-  platformAccounts,
+  platformAccounts: initialPlatformAccounts,
 }: Props) {
   const [status, setStatus] = useState(initialStatus);
   const [knowledgeLoaded, setKnowledgeLoaded] = useState(initialKnowledgeLoaded);
+  const [platformAccounts, setPlatformAccounts] = useState(initialPlatformAccounts);
   const [toggling, setToggling] = useState(false);
   const [uploadingKnowledge, setUploadingKnowledge] = useState(false);
   const [removingKnowledge, setRemovingKnowledge] = useState(false);
+  const [disconnecting, setDisconnecting] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleToggleStatus = async () => {
@@ -48,55 +51,50 @@ export default function BotConfigEditor({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: nextStatus }),
       });
-
       const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.error || "ÐÐ»Ð´Ð°Ð° Ð³Ð°Ñ€Ð»Ð°Ð°");
-        return;
-      }
+      if (!res.ok) { toast.error(data.error || "Алдаа гарлаа"); return; }
       setStatus(nextStatus);
-      toast.success(nextStatus === "active" ? "Bot Ð¸Ð´ÑÐ²Ñ…Ð¶Ð»ÑÑ" : "Bot Ñ‚Ò¯Ñ€ Ð·Ð¾Ð³ÑÐ»Ð¾Ð¾");
+      toast.success(nextStatus === "active" ? "Bot идэвхжлаа" : "Bot түр зогслоо");
     } catch {
-      toast.error("Ð¥Ð¾Ð»Ð±Ð¾Ð»Ñ‚Ñ‹Ð½ Ð°Ð»Ð´Ð°Ð° Ð³Ð°Ñ€Ð»Ð°Ð°");
+      toast.error("Холболтын алдаа гарлаа");
     } finally {
       setToggling(false);
     }
   };
 
-  const handleChooseKnowledgeFile = () => {
-    fileInputRef.current?.click();
+  const handleDisconnect = async (platform: string) => {
+    const label = platform === "all" ? "Бүх платформ" : platform;
+    if (!confirm(`${label}-г салгах уу?`)) return;
+    setDisconnecting(platform);
+    try {
+      const res = await fetch(`/api/business/disconnect-platform?platform=${platform}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) { toast.error(data.error || "Алдаа гарлаа"); return; }
+      setPlatformAccounts(platform === "all" ? [] : platformAccounts.filter((p) => p.platform !== platform));
+      toast.success("Салгалаа");
+    } catch {
+      toast.error("Холболтын алдаа гарлаа");
+    } finally {
+      setDisconnecting(null);
+    }
   };
+
+  const handleChooseKnowledgeFile = () => fileInputRef.current?.click();
 
   const handleKnowledgeFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
-
-    if (!file.name.toLowerCase().endsWith(".json")) {
-      toast.error("Please upload a .json file");
-      return;
-    }
-
-    if (file.size > 100 * 1024) {
-      toast.error("File must be 100KB or smaller");
-      return;
-    }
+    if (!file.name.toLowerCase().endsWith(".json")) { toast.error("Please upload a .json file"); return; }
+    if (file.size > 100 * 1024) { toast.error("File must be 100KB or smaller"); return; }
 
     const formData = new FormData();
     formData.append("file", file);
-
     setUploadingKnowledge(true);
     try {
-      const res = await fetch("/api/business/upload-knowledge", {
-        method: "POST",
-        body: formData,
-      });
+      const res = await fetch("/api/business/upload-knowledge", { method: "POST", body: formData });
       const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.error || "Failed to upload knowledge base");
-        return;
-      }
-
+      if (!res.ok) { toast.error(data.error || "Failed to upload knowledge base"); return; }
       setKnowledgeLoaded(true);
       toast.success("Knowledge base uploaded");
     } catch {
@@ -109,15 +107,9 @@ export default function BotConfigEditor({
   const handleRemoveKnowledge = async () => {
     setRemovingKnowledge(true);
     try {
-      const res = await fetch("/api/business/delete-knowledge", {
-        method: "DELETE",
-      });
+      const res = await fetch("/api/business/delete-knowledge", { method: "DELETE" });
       const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.error || "Failed to remove knowledge base");
-        return;
-      }
-
+      if (!res.ok) { toast.error(data.error || "Failed to remove knowledge base"); return; }
       setKnowledgeLoaded(false);
       toast.success("Knowledge base removed");
     } catch {
@@ -132,11 +124,10 @@ export default function BotConfigEditor({
     paused: "text-warning bg-warning/10 border-warning/30",
     cancelled: "text-danger bg-danger/10 border-danger/30",
   };
-
   const statusLabel: Record<string, string> = {
-    active: "Ð˜Ð´ÑÐ²Ñ…Ñ‚ÑÐ¹",
-    paused: "Ð¢Ò¯Ñ€ Ð·Ð¾Ð³ÑÑÐ¾Ð½",
-    cancelled: "Ð¦ÑƒÑ†Ð»Ð°Ð³Ð´ÑÐ°Ð½",
+    active: "Идэвхтэй",
+    paused: "Түр зогссон",
+    cancelled: "Цуцлагдсан",
   };
 
   return (
@@ -144,7 +135,7 @@ export default function BotConfigEditor({
       <div className="card p-5">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-text-secondary mb-1">Bot Ñ‚Ó©Ð»Ó©Ð²</p>
+            <p className="text-sm text-text-secondary mb-1">Bot төлөв</p>
             <span className={`text-sm font-semibold px-3 py-1 rounded-full border ${statusColor[status]}`}>
               {statusLabel[status]}
             </span>
@@ -164,35 +155,64 @@ export default function BotConfigEditor({
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-              ) : status === "active" ? (
-                "Ð—Ð¾Ð³ÑÐ¾Ð¾Ñ…"
-              ) : (
-                "Ð­Ñ…Ð»Ò¯Ò¯Ð»ÑÑ…"
-              )}
+              ) : status === "active" ? "Зогсоох" : "Эхлүүлэх"}
             </button>
           ) : null}
         </div>
 
-        {platformAccounts.length > 0 ? (
-          <div className="mt-4 pt-4 border-t border-border">
-            <p className="text-xs text-muted mb-2">Ð¥Ð¾Ð»Ð±Ð¾ÑÐ¾Ð½ Ð¿Ð»Ð°Ñ‚Ñ„Ð¾Ñ€Ð¼</p>
-            <div className="flex flex-wrap gap-2">
+        {/* Platform accounts */}
+        <div className="mt-4 pt-4 border-t border-border">
+          <p className="text-xs text-muted mb-2">Холбосон платформ</p>
+          {platformAccounts.length > 0 ? (
+            <div className="space-y-2">
               {platformAccounts.map((pa) => (
-                <span
-                  key={pa.id}
-                  className={`text-xs px-2.5 py-1 rounded-full border flex items-center gap-1.5 ${
+                <div key={pa.id} className="flex items-center justify-between">
+                  <span className={`text-xs px-2.5 py-1 rounded-full border flex items-center gap-1.5 ${
                     pa.platform === "instagram"
                       ? "text-pink-400 bg-pink-500/10 border-pink-500/20"
                       : "text-blue-400 bg-blue-500/10 border-blue-500/20"
-                  }`}
-                >
-                  {pa.page_name || (pa.platform === "instagram" ? "Instagram" : "Messenger")}
-                </span>
+                  }`}>
+                    {pa.page_name || (pa.platform === "instagram" ? "Instagram" : "Messenger")}
+                  </span>
+                  <button
+                    onClick={() => handleDisconnect(pa.platform)}
+                    disabled={disconnecting === pa.platform}
+                    className="text-xs text-danger/70 hover:text-danger transition-colors disabled:opacity-50"
+                  >
+                    {disconnecting === pa.platform ? "..." : "Салгах"}
+                  </button>
+                </div>
               ))}
+              <div className="flex gap-2 mt-2 flex-wrap">
+                <a
+                  href={`/api/facebook/auth?businessId=${businessId}`}
+                  className="text-xs font-medium px-3 py-1.5 rounded-lg border border-border bg-surface-2 hover:border-primary/40 hover:text-text-primary transition-colors"
+                >
+                  Дахин холбох / Instagram нэмэх
+                </a>
+                <button
+                  onClick={() => handleDisconnect("all")}
+                  disabled={!!disconnecting}
+                  className="text-xs font-medium px-3 py-1.5 rounded-lg border border-danger/30 text-danger/70 hover:text-danger hover:border-danger/60 transition-colors disabled:opacity-50"
+                >
+                  Бүгдийг салгах
+                </button>
+              </div>
             </div>
-          </div>
-        ) : null}
+          ) : (
+            <div>
+              <p className="text-xs text-muted mb-2">Платформ холбогдоогүй байна</p>
+              <a
+                href={`/api/facebook/auth?businessId=${businessId}`}
+                className="text-xs font-medium px-3 py-1.5 rounded-lg border border-border bg-surface-2 hover:border-primary/40 hover:text-text-primary transition-colors inline-block"
+              >
+                Facebook / Instagram холбох
+              </a>
+            </div>
+          )}
+        </div>
 
+        {/* Knowledge base */}
         <div className="mt-4 pt-4 border-t border-border space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             {knowledgeLoaded ? (
@@ -218,13 +238,7 @@ export default function BotConfigEditor({
                 {removingKnowledge ? "Removing..." : "Remove"}
               </button>
             ) : null}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".json"
-              className="hidden"
-              onChange={handleKnowledgeFileChange}
-            />
+            <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleKnowledgeFileChange} />
           </div>
           <p className="text-xs text-muted">
             Upload a .json file with your business data (packages, FAQ, pricing etc.)
@@ -233,13 +247,13 @@ export default function BotConfigEditor({
       </div>
 
       <div className="card p-5">
-        <h2 className="font-bold text-text-primary mb-4">Bot Ñ‚Ð¾Ñ…Ð¸Ñ€Ð³Ð¾Ð¾</h2>
+        <h2 className="font-bold text-text-primary mb-4">Bot тохиргоо</h2>
         <BotConfigForm
           initialBotName={initialBotName}
           initialBotPrompt={initialBotPrompt}
           initialWelcomeMessage={initialWelcomeMessage}
           initialBotTone={initialTone}
-          submitLabel="Ð¥Ð°Ð´Ð³Ð°Ð»Ð°Ñ…"
+          submitLabel="Хадгалах"
           onSave={async ({ botName, botPrompt, welcomeMessage, botTone }) => {
             try {
               const res = await fetch("/api/business/update-bot", {
@@ -247,14 +261,11 @@ export default function BotConfigEditor({
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ botPrompt, botName, welcomeMessage, botTone }),
               });
-
               const data = await res.json();
-              if (!res.ok) {
-                return { ok: false, error: data.error || "ÐÐ»Ð´Ð°Ð° Ð³Ð°Ñ€Ð»Ð°Ð°" };
-              }
+              if (!res.ok) return { ok: false, error: data.error || "Алдаа гарлаа" };
               return { ok: true };
             } catch {
-              return { ok: false, error: "Ð¥Ð¾Ð»Ð±Ð¾Ð»Ñ‚Ñ‹Ð½ Ð°Ð»Ð´Ð°Ð° Ð³Ð°Ñ€Ð»Ð°Ð°" };
+              return { ok: false, error: "Холболтын алдаа гарлаа" };
             }
           }}
         />
