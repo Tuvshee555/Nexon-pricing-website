@@ -70,7 +70,7 @@ export async function POST(request: Request) {
         }
         if (!businessId) continue;
 
-        const [businesses, creditsRows, threads] = await Promise.all([
+        const [businesses, creditsRows, threads, keywordTriggers] = await Promise.all([
           sql`SELECT bot_prompt, status, knowledge_json FROM businesses WHERE id = ${businessId} LIMIT 1`,
           sql`SELECT balance FROM credits WHERE business_id = ${businessId} LIMIT 1`,
           sql`
@@ -78,11 +78,45 @@ export async function POST(request: Request) {
             WHERE business_id = ${businessId} AND platform = ${platform} AND sender_id = ${senderId}
             LIMIT 1
           `,
+          sql`
+            SELECT keyword, match_type, response FROM keyword_triggers
+            WHERE business_id = ${businessId} AND enabled = true
+            AND (platform = 'all' OR platform = ${platform})
+          `,
         ]);
 
         const business = businesses[0] ?? null;
         console.log(`[webhook] business status=${business?.status} credits=${creditsRows[0]?.balance}`);
         if (!business || business.status !== "active") continue;
+
+        // Check keyword triggers first (bypass AI)
+        const lowerText = messageText.toLowerCase();
+        const matchedTrigger = (keywordTriggers as Array<{ keyword: string; match_type: string; response: string }>).find((t) => {
+          const kw = t.keyword.toLowerCase();
+          if (t.match_type === "exact") return lowerText === kw;
+          if (t.match_type === "starts_with") return lowerText.startsWith(kw);
+          return lowerText.includes(kw); // contains (default)
+        });
+
+        if (matchedTrigger && pageAccessToken) {
+          await sendFacebookMessage(senderId, matchedTrigger.response, platform, pageAccessToken);
+          // Still log the conversation
+          const existingMessages: Array<{ role: string; content: string }> = Array.isArray(threads[0]?.messages)
+            ? (threads[0].messages as Array<{ role: string; content: string }>)
+            : [];
+          const updatedMessages = [
+            ...existingMessages,
+            { role: "user", content: messageText },
+            { role: "assistant", content: matchedTrigger.response },
+          ].slice(-100);
+          await sql`
+            INSERT INTO conversation_threads (business_id, platform, sender_id, messages, last_message_at)
+            VALUES (${businessId}, ${platform}, ${senderId}, ${JSON.stringify(updatedMessages)}, NOW())
+            ON CONFLICT (business_id, platform, sender_id)
+            DO UPDATE SET messages = ${JSON.stringify(updatedMessages)}, last_message_at = NOW()
+          `;
+          continue;
+        }
 
         const credits = creditsRows[0] ?? null;
         if (!credits || (credits.balance as number) <= 0) {
