@@ -18,10 +18,19 @@ interface BusinessData {
   subscription_price: number;
   next_billing_date: string | null;
   billing_active: boolean;
+  knowledge_json: unknown;
   users: { id: string; email: string } | null;
   plans: { id?: string; plan_type: string; monthly_tier?: string; monthly_price?: number } | null;
   credits: { balance: number; total_purchased: number } | null;
-  platform_accounts: Array<{ id: string; platform: string; external_id: string }> | null;
+  platform_accounts: Array<{ id: string; platform: string; page_name?: string; page_id?: string; instagram_account_id?: string }> | null;
+}
+
+interface Thread {
+  id: string;
+  platform: string;
+  sender_id: string;
+  messages: Array<{ role: string; content: string }>;
+  last_message_at: string;
 }
 
 interface Props {
@@ -45,6 +54,7 @@ interface Props {
     transaction_type?: string;
     status: string;
   }>;
+  threads: Thread[];
 }
 
 const TX_TYPE_LABEL: Record<string, string> = {
@@ -54,7 +64,7 @@ const TX_TYPE_LABEL: Record<string, string> = {
   manual: "Гараар",
 };
 
-export default function AdminClientDetail({ business, logs, transactions }: Props) {
+export default function AdminClientDetail({ business, logs, transactions, threads }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
   const [messagesInput, setMessagesInput] = useState("");
@@ -77,8 +87,8 @@ export default function AdminClientDetail({ business, logs, transactions }: Prop
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
   const [newPlatform, setNewPlatform] = useState({ platform: "instagram", external_id: "" });
-  const [activeTab, setActiveTab] = useState<"overview" | "messages" | "payments">("overview");
-
+  const [activeTab, setActiveTab] = useState<"overview" | "messages" | "payments" | "conversations">("overview");
+  const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
   const [actionError, setActionError] = useState("");
 
   const callAction = async (action: string, payload?: object) => {
@@ -167,10 +177,23 @@ export default function AdminClientDetail({ business, logs, transactions }: Prop
     setNewPlatform({ platform: "instagram", external_id: "" });
   };
 
+  const handleDisconnectPlatform = async (platform: string) => {
+    const label = platform === "all" ? "бүх платформ" : platform;
+    if (!confirm(`${label} салгах уу?`)) return;
+    await callAction("disconnect_platform", { platform });
+  };
+
+  const handleResetHistory = async () => {
+    if (!confirm("Энэ клиентийн бүх ярианы түүхийг устгах уу? Буцаах боломжгүй.")) return;
+    await callAction("reset_history");
+    setSelectedThread(null);
+  };
+
   const credits = business.credits;
   const virtualBalance = business.virtual_balance || 0;
   const subscriptionPrice = business.subscription_price || 0;
   const isLowBalance = subscriptionPrice > 0 && virtualBalance < subscriptionPrice;
+  const hasKnowledge = !!business.knowledge_json;
 
   const statusColor: Record<string, string> = {
     active: "text-success bg-success/10 border-success/30",
@@ -204,7 +227,12 @@ export default function AdminClientDetail({ business, logs, transactions }: Prop
             </span>
             {isLowBalance && (
               <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full border text-warning bg-warning/10 border-warning/30">
-                ⚠️ Үлдэгдэл бага
+                Үлдэгдэл бага
+              </span>
+            )}
+            {hasKnowledge && (
+              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full border text-accent bg-accent/10 border-accent/30">
+                Knowledge base
               </span>
             )}
           </div>
@@ -234,6 +262,13 @@ export default function AdminClientDetail({ business, logs, transactions }: Prop
           className="px-4 py-2 bg-danger/10 border border-danger/30 text-danger rounded-lg text-sm font-medium hover:bg-danger/20 disabled:opacity-40 transition-colors"
         >
           {loading === "cancel" ? "..." : "Цуцлах"}
+        </button>
+        <button
+          onClick={handleResetHistory}
+          disabled={loading === "reset_history"}
+          className="px-4 py-2 bg-surface-2 border border-border text-text-secondary rounded-lg text-sm font-medium hover:border-danger/40 hover:text-danger transition-colors disabled:opacity-40 ml-auto"
+        >
+          {loading === "reset_history" ? "..." : "Түүх цэвэрлэх"}
         </button>
       </div>
 
@@ -267,7 +302,7 @@ export default function AdminClientDetail({ business, logs, transactions }: Prop
 
       {/* Tabs */}
       <div className="inline-flex bg-surface border border-border rounded-xl p-1">
-        {(["overview", "messages", "payments"] as const).map((t) => (
+        {(["overview", "messages", "conversations", "payments"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setActiveTab(t)}
@@ -275,7 +310,7 @@ export default function AdminClientDetail({ business, logs, transactions }: Prop
               activeTab === t ? "bg-primary text-white" : "text-text-secondary hover:text-text-primary"
             }`}
           >
-            {{ overview: "Тойм", messages: "Мессеж", payments: "Төлбөр" }[t]}
+            {{ overview: "Тойм", messages: "Мессеж", conversations: "Яриа", payments: "Төлбөр" }[t]}
           </button>
         ))}
       </div>
@@ -346,7 +381,7 @@ export default function AdminClientDetail({ business, logs, transactions }: Prop
                   </select>
                   {selected && selected.tier !== "enterprise" && (
                     <div className="bg-surface-2 rounded-lg px-3 py-2 text-xs text-text-secondary">
-                      💰 {selected.price.toLocaleString()}₮/сар &nbsp;·&nbsp; 💬 {selected.messageLimit.toLocaleString()} мессеж/сар
+                      {selected.price.toLocaleString()}₮/сар · {selected.messageLimit.toLocaleString()} мессеж/сар
                     </div>
                   )}
                 </div>
@@ -493,13 +528,31 @@ export default function AdminClientDetail({ business, logs, transactions }: Prop
                 {business.platform_accounts?.map((pa) => (
                   <div key={pa.id} className="flex items-center justify-between bg-surface-2 rounded-lg px-3 py-2">
                     <div>
-                      <span className="text-xs text-muted capitalize">{pa.platform}</span>
-                      <p className="text-sm text-text-primary font-mono">{pa.external_id}</p>
+                      <span className={`text-xs capitalize ${pa.platform === "instagram" ? "text-pink-400" : "text-blue-400"}`}>
+                        {pa.platform}
+                      </span>
+                      <p className="text-sm text-text-primary">{pa.page_name || pa.page_id || pa.instagram_account_id || "—"}</p>
                     </div>
+                    <button
+                      onClick={() => handleDisconnectPlatform(pa.platform)}
+                      disabled={loading === "disconnect_platform"}
+                      className="text-xs text-danger/70 hover:text-danger transition-colors disabled:opacity-50"
+                    >
+                      Салгах
+                    </button>
                   </div>
                 ))}
                 {(!business.platform_accounts || business.platform_accounts.length === 0) && (
                   <p className="text-text-secondary text-sm">Платформ холбоогүй байна.</p>
+                )}
+                {(business.platform_accounts?.length ?? 0) > 0 && (
+                  <button
+                    onClick={() => handleDisconnectPlatform("all")}
+                    disabled={loading === "disconnect_platform"}
+                    className="text-xs text-danger/60 hover:text-danger transition-colors disabled:opacity-50 mt-1"
+                  >
+                    {loading === "disconnect_platform" ? "..." : "Бүгдийг салгах"}
+                  </button>
                 )}
               </div>
               <div className="flex gap-2">
@@ -574,6 +627,91 @@ export default function AdminClientDetail({ business, logs, transactions }: Prop
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Conversations tab */}
+      {activeTab === "conversations" && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Thread list */}
+          <div className="card overflow-hidden">
+            <div className="p-4 border-b border-border flex items-center justify-between">
+              <h2 className="font-bold text-text-primary">Яриа ({threads.length})</h2>
+            </div>
+            {threads.length === 0 ? (
+              <div className="p-6 text-center text-text-secondary text-sm">Яриа байхгүй байна.</div>
+            ) : (
+              <div className="divide-y divide-border">
+                {threads.map((t) => {
+                  const lastMsg = t.messages[t.messages.length - 1];
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => setSelectedThread(t)}
+                      className={`w-full text-left px-4 py-3 hover:bg-surface-2/50 transition-colors ${
+                        selectedThread?.id === t.id ? "bg-primary/10" : ""
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                          t.platform === "instagram"
+                            ? "text-pink-400 bg-pink-500/10"
+                            : "text-blue-400 bg-blue-500/10"
+                        }`}>
+                          {t.platform}
+                        </span>
+                        <span className="text-xs text-muted">
+                          {new Date(t.last_message_at).toLocaleDateString("mn-MN")}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted font-mono truncate">{t.sender_id}</p>
+                      {lastMsg && (
+                        <p className="text-xs text-text-secondary mt-1 truncate">
+                          {lastMsg.role === "user" ? "Хэрэглэгч: " : "Bot: "}
+                          {lastMsg.content}
+                        </p>
+                      )}
+                      <p className="text-xs text-muted mt-0.5">{t.messages.length} мессеж</p>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Thread detail */}
+          <div className="card overflow-hidden flex flex-col">
+            <div className="p-4 border-b border-border">
+              <h2 className="font-bold text-text-primary">
+                {selectedThread ? `${selectedThread.platform} · ${selectedThread.sender_id}` : "Яриа сонгоно уу"}
+              </h2>
+            </div>
+            {selectedThread ? (
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 max-h-[500px]">
+                {selectedThread.messages.map((msg, i) => (
+                  <div
+                    key={i}
+                    className={`flex ${msg.role === "user" ? "justify-start" : "justify-end"}`}
+                  >
+                    <div
+                      className={`max-w-[80%] rounded-xl px-3 py-2 text-sm ${
+                        msg.role === "user"
+                          ? "bg-surface-2 text-text-primary"
+                          : "bg-primary/20 text-text-primary"
+                      }`}
+                    >
+                      <p className="text-xs text-muted mb-1">{msg.role === "user" ? "Хэрэглэгч" : "Bot"}</p>
+                      <p className="whitespace-pre-wrap">{msg.content}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-6 text-center text-text-secondary text-sm flex-1">
+                Зүүн талаас яриа сонгоно уу
+              </div>
+            )}
           </div>
         </div>
       )}

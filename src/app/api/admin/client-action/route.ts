@@ -35,7 +35,7 @@ async function logAudit(adminId: string, action: string, businessId: string | nu
 
 const VALID_ACTIONS = [
   "activate", "pause", "cancel", "add_credits", "reduce_credits",
-  "add_balance", "set_billing", "add_platform", "setup_business", "update",
+  "add_balance", "set_billing", "add_platform", "disconnect_platform", "reset_history", "setup_business", "update",
 ] as const;
 type ValidAction = typeof VALID_ACTIONS[number];
 
@@ -149,6 +149,31 @@ export async function POST(request: Request) {
         await logAudit(adminId, "add_platform", businessId, {
           platform: body.platform, external_id: body.external_id.trim(),
         });
+        break;
+      }
+
+      case "disconnect_platform": {
+        const platform = body.platform as string;
+        if (!platform) return NextResponse.json({ error: "platform required" }, { status: 400 });
+        if (platform === "all") {
+          await sql`DELETE FROM platform_accounts WHERE business_id = ${businessId}`;
+          await sql`UPDATE businesses SET platforms = '{}' WHERE id = ${businessId}`;
+        } else {
+          if (!["instagram", "messenger"].includes(platform)) {
+            return NextResponse.json({ error: "Invalid platform" }, { status: 400 });
+          }
+          await sql`DELETE FROM platform_accounts WHERE business_id = ${businessId} AND platform = ${platform}`;
+          const remaining = await sql`SELECT platform FROM platform_accounts WHERE business_id = ${businessId}`;
+          const remainingPlatforms = remaining.map((r) => r.platform as string);
+          await sql`UPDATE businesses SET platforms = ${remainingPlatforms}::text[] WHERE id = ${businessId}`;
+        }
+        await logAudit(adminId, "disconnect_platform", businessId, { platform });
+        break;
+      }
+
+      case "reset_history": {
+        await sql`DELETE FROM conversation_threads WHERE business_id = ${businessId}`;
+        await logAudit(adminId, "reset_history", businessId);
         break;
       }
 
