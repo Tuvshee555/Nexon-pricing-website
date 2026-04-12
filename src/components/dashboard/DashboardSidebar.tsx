@@ -40,17 +40,6 @@ const FlowsIcon = () => (
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M7 7h10v4H7zM7 13h10v4H7z" />
   </svg>
 );
-const TemplatesIcon = () => (
-  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z" />
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 8h8M8 12h8M8 16h5" />
-  </svg>
-);
-const TeamIcon = () => (
-  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20h5v-2a3 3 0 00-5-2.236M7 20H2v-2a3 3 0 015-2.236M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0zm-18 0a2.5 2.5 0 115 0 2.5 2.5 0 01-5 0z" />
-  </svg>
-);
 const InboxIcon = () => (
   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M21 15a2 2 0 01-2 2h-4l-3 3v-3H5a2 2 0 01-2-2V7a2 2 0 012-2h14a2 2 0 012 2v8z" />
@@ -100,7 +89,6 @@ export default function DashboardSidebar({ user, role }: Props) {
       label: "Build",
       links: [
         { href: "/dashboard/automation", label: "Automation", icon: <AutomationIcon /> },
-        { href: "/dashboard/templates", label: "Templates", icon: <TemplatesIcon /> },
         { href: "/dashboard/sequences", label: "Sequences", icon: <SequencesIcon /> },
         { href: "/dashboard/flows", label: "Flows", icon: <FlowsIcon /> },
         { href: "/dashboard/ai", label: "AI", icon: <AIIcon /> },
@@ -111,7 +99,6 @@ export default function DashboardSidebar({ user, role }: Props) {
       links: [
         { href: "/dashboard/analytics", label: "Analytics", icon: <AnalyticsIcon /> },
         { href: "/dashboard/settings", label: "Settings", icon: <SettingsIcon /> },
-        { href: "/dashboard/team", label: "Team", icon: <TeamIcon /> },
       ],
     },
   ];
@@ -228,7 +215,17 @@ export default function DashboardSidebar({ user, role }: Props) {
       {mobileOpen && (
         <>
           <div className="fixed inset-0 z-40 bg-slate-900/45 backdrop-blur-sm lg:hidden" onClick={() => setMobileOpen(false)} />
-          <aside className="fixed inset-y-0 left-0 z-50 flex w-72 flex-col lg:hidden">
+          <aside className="fixed inset-y-0 left-0 z-50 flex w-72 flex-col lg:hidden relative">
+            <button
+              type="button"
+              aria-label="Close dashboard navigation"
+              onClick={() => setMobileOpen(false)}
+              className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/6 text-slate-200 transition-colors hover:bg-white/12"
+            >
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
             <SidebarContent />
           </aside>
         </>

@@ -47,7 +47,7 @@ export default async function DashboardLayout({
     <div className="min-h-screen dashboard-shell">
       <DashboardSidebar user={{ email: session.user.email, name: session.user.name }} role={role} />
 
-      <div className="min-h-screen lg:pl-72">
+      <div className="min-h-screen pt-16 lg:pt-0 lg:pl-72">
         <DashboardTopbar />
         <main className="px-4 py-6 sm:px-6 lg:px-8">{children}</main>
       </div>

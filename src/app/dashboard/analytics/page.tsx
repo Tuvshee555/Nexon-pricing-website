@@ -1,235 +1,174 @@
-import Link from "next/link";
-import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/auth";
-import { sql } from "@/lib/db";
-import AnalyticsCharts from "@/components/dashboard/analytics/AnalyticsCharts";
+"use client";
 
-export const dynamic = "force-dynamic";
+import { useEffect, useMemo, useState } from "react";
 
-type RangeKey = "7d" | "30d" | "90d";
-
-const RANGE_DAYS: Record<RangeKey, number> = {
-  "7d": 7,
-  "30d": 30,
-  "90d": 90,
+type AnalyticsResponse = {
+  totalContacts: number;
+  messagesThisMonth: number;
+  messagesAllTime: number;
+  triggerFires: number;
+  messagesPerDay: Array<{ date: string; count: number }>;
+  platformBreakdown: Array<{ platform: string; count: number }>;
 };
 
-const RANGE_META: Record<RangeKey, { label: string; hint: string }> = {
-  "7d": { label: "Last 7 days", hint: "Short-term trend" },
-  "30d": { label: "Last 30 days", hint: "Balanced snapshot" },
-  "90d": { label: "Last 90 days", hint: "Longer pattern" },
-};
+export default function AnalyticsPage() {
+  const [data, setData] = useState<AnalyticsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-function formatDateKey(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
+  useEffect(() => {
+    let cancelled = false;
 
-function buildDateSeries(start: Date, end: Date, rows: Array<{ date: string; value: number }>) {
-  const map = new Map(rows.map((row) => [row.date, Number(row.value) || 0]));
-  const series = [];
-  const cursor = new Date(start);
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch("/api/analytics", { cache: "no-store" });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || "Failed to load analytics");
+        if (!cancelled) setData(json as AnalyticsResponse);
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load analytics");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
 
-  while (cursor <= end) {
-    const key = formatDateKey(cursor);
-    series.push({
-      date: key.slice(5),
-      value: map.get(key) || 0,
-    });
-    cursor.setDate(cursor.getDate() + 1);
-  }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  return series;
-}
+  const messengerCount = useMemo(() => {
+    if (!data?.platformBreakdown) return 0;
+    return data.platformBreakdown.find((row) => row.platform === "messenger")?.count ?? 0;
+  }, [data]);
 
-export default async function AnalyticsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ range?: string }>;
-}) {
-  const params = await searchParams;
-  const range = (params.range === "30d" || params.range === "90d" ? params.range : "7d") as RangeKey;
-
-  const session = await getServerSession(authOptions);
-  if (!session) redirect("/login");
-
-  const userId = session.user.id;
-  const businessRows = await sql`SELECT id FROM businesses WHERE user_id = ${userId} LIMIT 1`;
-  const business = businessRows[0] ?? null;
-  if (!business) redirect("/dashboard");
-
-  const now = new Date();
-  const start = new Date(now);
-  start.setDate(start.getDate() - RANGE_DAYS[range] + 1);
-  start.setHours(0, 0, 0, 0);
-
-  const [contactsRows, messagesRows, platformRows, triggerRows, totalContactsRows, totalMessagesRows] =
-    await Promise.all([
-      sql`
-        SELECT TO_CHAR(created_at::date, 'YYYY-MM-DD') AS date, COUNT(*)::int AS value
-        FROM conversation_threads
-        WHERE business_id = ${business.id as string}
-          AND created_at >= ${start.toISOString()}
-        GROUP BY created_at::date
-        ORDER BY created_at::date ASC
-      `,
-      sql`
-        SELECT TO_CHAR(logged_at::date, 'YYYY-MM-DD') AS date, COALESCE(SUM(message_count), 0)::int AS value
-        FROM message_logs
-        WHERE business_id = ${business.id as string}
-          AND logged_at >= ${start.toISOString()}
-        GROUP BY logged_at::date
-        ORDER BY logged_at::date ASC
-      `,
-      sql`
-        SELECT platform AS name, COUNT(*)::int AS value
-        FROM conversation_threads
-        WHERE business_id = ${business.id as string}
-          AND created_at >= ${start.toISOString()}
-        GROUP BY platform
-        ORDER BY value DESC
-      `,
-      sql`
-        SELECT keyword, COALESCE(trigger_fires_count, 0)::int AS trigger_fires_count
-        FROM keyword_triggers
-        WHERE business_id = ${business.id as string}
-        ORDER BY trigger_fires_count DESC, created_at DESC
-        LIMIT 10
-      `,
-      sql`
-        SELECT COUNT(*)::int AS value
-        FROM conversation_threads
-        WHERE business_id = ${business.id as string}
-          AND created_at >= ${start.toISOString()}
-      `,
-      sql`
-        SELECT COALESCE(SUM(message_count), 0)::int AS value
-        FROM message_logs
-        WHERE business_id = ${business.id as string}
-          AND logged_at >= ${start.toISOString()}
-      `,
-    ]);
-
-  const contactSeries = buildDateSeries(start, now, contactsRows as Array<{ date: string; value: number }>);
-  const messageSeries = buildDateSeries(start, now, messagesRows as Array<{ date: string; value: number }>);
-  const platformBreakdown = (platformRows as Array<{ name: string; value: number }>).map((row) => ({
-    name: row.name,
-    value: row.value,
-  }));
-
-  const totalContacts = Number(totalContactsRows[0]?.value || 0);
-  const totalMessages = Number(totalMessagesRows[0]?.value || 0);
-  const avgMessagesPerContact = totalContacts > 0 ? Math.round(totalMessages / totalContacts) : 0;
-  const mostActiveDay = messageSeries.reduce(
-    (best, current) => (current.value > best.value ? current : best),
-    messageSeries[0] || { date: "-", value: 0 }
-  );
-  const topPlatform = platformBreakdown[0]?.name || "n/a";
-  const rangeMeta = RANGE_META[range];
+  const instagramCount = useMemo(() => {
+    if (!data?.platformBreakdown) return 0;
+    return data.platformBreakdown.find((row) => row.platform === "instagram")?.count ?? 0;
+  }, [data]);
 
   return (
-    <div className="min-h-screen bg-[#f5f7fb] p-4 sm:p-6 lg:p-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="surface-card rounded-[30px] p-6 sm:p-8">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-3xl">
-              <p className="section-label">Analytics</p>
-              <h1 className="mt-4 text-4xl font-black tracking-[-0.04em] text-slate-950">
-                The numbers behind your automation
-              </h1>
-              <p className="mt-3 text-base leading-7 text-slate-600">
-                See where conversations start, which channels lead, and how much work your flows are saving the team.
-              </p>
+    <div className="min-h-[calc(100vh-7rem)] space-y-6">
+      <section className="surface-card rounded-[30px] p-6">
+        <div className="max-w-3xl">
+          <p className="section-label">Analytics</p>
+          <h1 className="mt-4 text-4xl font-black tracking-[-0.04em] text-slate-950">Message activity</h1>
+          <p className="mt-3 text-base leading-7 text-slate-600">
+            Contacts, message volume, and trigger usage from the last 30 days.
+          </p>
+        </div>
+
+        {loading && (
+          <div className="mt-6 rounded-[24px] border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-sm text-slate-500">
+            Loading analytics…
+          </div>
+        )}
+
+        {!loading && error && (
+          <div className="mt-6 rounded-[24px] border border-red-200 bg-red-50 px-5 py-8 text-sm font-semibold text-red-700">
+            {error}
+          </div>
+        )}
+
+        {!loading && !error && data && (
+          <>
+            <div className="mt-6 grid gap-3 md:grid-cols-4">
+              <StatCard label="Total Contacts" value={data.totalContacts.toLocaleString()} />
+              <StatCard label="Messages This Month" value={data.messagesThisMonth.toLocaleString()} />
+              <StatCard label="All Time Messages" value={data.messagesAllTime.toLocaleString()} />
+              <StatCard label="Trigger Fires" value={data.triggerFires.toLocaleString()} />
             </div>
 
-            <div className="flex flex-col items-start gap-3">
-              <div className="inline-flex rounded-full border border-slate-200 bg-white p-1 shadow-sm">
-                {(["7d", "30d", "90d"] as RangeKey[]).map((option) => (
-                  <Link
-                    key={option}
-                    href={`/dashboard/analytics?range=${option}`}
-                    className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
-                      range === option ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-100"
-                    }`}
-                  >
-                    {RANGE_META[option].label}
-                  </Link>
-                ))}
+            <div className="mt-6 grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+              <div className="surface-panel rounded-[30px] p-6">
+                <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">Messages per day</p>
+                <h2 className="mt-2 text-2xl font-black tracking-[-0.03em] text-slate-950">Last 30 days</h2>
+                <MessagesBarChart series={data.messagesPerDay} />
               </div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                {rangeMeta.hint}
-              </p>
-            </div>
-          </div>
 
-          <div className="mt-6 grid gap-3 md:grid-cols-4">
-            <MetricCard label="Contacts" value={totalContacts.toLocaleString()} note={`${rangeMeta.label} total`} />
-            <MetricCard label="Messages" value={totalMessages.toLocaleString()} note="Sent by the bot and team" />
-            <MetricCard label="Avg per contact" value={avgMessagesPerContact.toString()} note="Response density" />
-            <MetricCard label="Top platform" value={topPlatform} note={`Peak day: ${mostActiveDay.date}`} />
-          </div>
-        </section>
-
-        <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-          <AnalyticsCharts
-            contactSeries={contactSeries}
-            messageSeries={messageSeries}
-            platformBreakdown={platformBreakdown.length ? platformBreakdown : [{ name: "instagram", value: 0 }]}
-            keywordTriggers={
-              (triggerRows as Array<{ keyword: string; trigger_fires_count: number }>).slice(0, 10)
-            }
-            stats={{
-              totalContacts,
-              totalMessages,
-              mostActiveDay: mostActiveDay.date,
-              topPlatform,
-            }}
-            rangeLabel={range === "7d" ? "7d" : range === "30d" ? "30d" : "90d"}
-          />
-
-          <div className="space-y-6">
-            <div className="surface-panel rounded-[30px] p-6">
-              <p className="section-label">What to watch</p>
-              <h2 className="mt-4 text-2xl font-black tracking-[-0.03em] text-slate-950">
-                A few signals tell the whole story
-              </h2>
-              <div className="mt-5 space-y-3 text-sm leading-7 text-slate-600">
-                <p>High message volume with flat contact growth usually means the bot is working, but discovery can improve.</p>
-                <p>A rising top platform share is a clue to double down on the channel that already converts best.</p>
-                <p>Trigger spikes point to the exact questions customers ask most, which is the fastest place to add better automations.</p>
+              <div className="surface-panel rounded-[30px] p-6">
+                <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">Platform breakdown</p>
+                <h2 className="mt-2 text-2xl font-black tracking-[-0.03em] text-slate-950">Messenger vs Instagram</h2>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <PlatformPill platform="messenger" count={messengerCount} />
+                  <PlatformPill platform="instagram" count={instagramCount} />
+                </div>
               </div>
             </div>
+          </>
+        )}
+      </section>
+    </div>
+  );
+}
 
-            <div className="surface-panel rounded-[30px] p-6">
-              <p className="section-label">Next move</p>
-              <h2 className="mt-4 text-2xl font-black tracking-[-0.03em] text-slate-950">
-                Turn this data into a better flow
-              </h2>
-              <div className="mt-5 grid gap-3">
-                <Link href="/dashboard/automation" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50">
-                  Review the top keyword trigger
-                </Link>
-                <Link href="/dashboard/flows" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50">
-                  Add a flow for the busiest question
-                </Link>
-                <Link href="/dashboard/inbox" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50">
-                  Check handoffs and live replies
-                </Link>
-              </div>
+function StatCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{label}</p>
+      <p className="mt-3 text-2xl font-black tracking-[-0.03em] text-slate-950">{value}</p>
+    </div>
+  );
+}
+
+function PlatformPill({ platform, count }: { platform: "messenger" | "instagram"; count: number }) {
+  const classes =
+    platform === "messenger"
+      ? "border-blue-200 bg-blue-50 text-blue-700"
+      : "border-pink-200 bg-pink-50 text-pink-700";
+  const label = platform === "messenger" ? "Messenger" : "Instagram";
+
+  return (
+    <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm font-semibold ${classes}`}>
+      {label}
+      <span className="rounded-full bg-white/80 px-2 py-0.5 text-xs font-black text-slate-900">
+        {count.toLocaleString()}
+      </span>
+    </span>
+  );
+}
+
+function MessagesBarChart({ series }: { series: Array<{ date: string; count: number }> }) {
+  const max = Math.max(1, ...series.map((d) => d.count));
+
+  return (
+    <div className="mt-5">
+      <div className="relative h-44 overflow-hidden rounded-[24px] border border-slate-200 bg-white p-3">
+        <svg
+          className="absolute inset-0 h-full w-full"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          {[25, 50, 75].map((y) => (
+            <line
+              key={y}
+              x1="0"
+              x2="100"
+              y1={y}
+              y2={y}
+              stroke="currentColor"
+              className="text-slate-200"
+              strokeWidth="0.6"
+            />
+          ))}
+        </svg>
+
+        <div className="absolute inset-3 flex items-end gap-1">
+          {series.map((day) => (
+            <div key={day.date} className="flex-1" title={`${day.date}: ${day.count}`}>
+              <div
+                className="w-full rounded-sm bg-primary/90 transition-colors hover:bg-primary"
+                style={{ height: `${(day.count / max) * 100}%` }}
+              />
             </div>
-          </div>
-        </section>
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 
-function MetricCard({ label, value, note }: { label: string; value: string; note: string }) {
-  return (
-    <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{label}</p>
-      <p className="mt-3 text-2xl font-black tracking-[-0.03em] text-slate-950">{value}</p>
-      <p className="mt-2 text-sm text-slate-500">{note}</p>
-    </div>
-  );
-}

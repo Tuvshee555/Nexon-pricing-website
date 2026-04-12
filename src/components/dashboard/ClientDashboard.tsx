@@ -111,6 +111,17 @@ export default function ClientDashboard({
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
+      {business.onboarding_done === false && (
+        <div className="flex flex-col gap-3 rounded-[26px] border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-semibold text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+          <p>Setup is not complete — your bot is not active yet.</p>
+          <Link
+            href="/dashboard/setup"
+            className="inline-flex items-center justify-center rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-600"
+          >
+            Complete Setup
+          </Link>
+        </div>
+      )}
       {showWelcome && (
         <div className="rounded-[26px] border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-semibold text-emerald-700">
           Welcome aboard. Your workspace is ready and the first dashboard view is live.
