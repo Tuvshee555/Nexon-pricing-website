@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { MONTHLY_PLANS, MonthlyTier, SETUP_FEE } from "@/types";
 import { trackEvent } from "@/lib/analytics";
@@ -36,20 +35,13 @@ const planDetails: Record<
   },
 };
 
-const creditPacks = [
-  { id: "starter", credits: 5000, price: 49000, popular: false },
-  { id: "growth", credits: 15000, price: 129000, popular: true },
-  { id: "scale", credits: 30000, price: 239000, popular: false },
-];
-
 export default function PricingSection() {
   const { lang, t } = useLanguage();
-  const [billingView, setBillingView] = useState<"monthly" | "credits">("monthly");
 
   const subtitle =
     lang === "mn"
-      ? "Сарын багц сонгоод эхэл, дараа нь dashboard-оос credit нэмэх боломжтой."
-      : "Start with a monthly plan, then top up credits anytime from your dashboard.";
+      ? "Сарын тогтмол багцаар ажиллана. Нэмэлт зардалгүй."
+      : "Simple monthly subscription. No extra charges.";
 
   return (
     <section id="pricing" className="px-4 py-20 sm:px-6 lg:px-8">
@@ -61,40 +53,12 @@ export default function PricingSection() {
           </h2>
           <p className="mt-5 text-lg leading-8 text-slate-600">{subtitle}</p>
 
-          <div className="mt-6 flex items-center justify-center">
-            <div className="inline-flex rounded-full border border-slate-200 bg-white p-1">
-              <button
-                onClick={() => {
-                  setBillingView("monthly");
-                  trackEvent("pricing_view_changed", { view: "monthly" });
-                }}
-                className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
-                  billingView === "monthly" ? "bg-slate-900 text-white" : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                {t("pricing_monthly")}
-              </button>
-              <button
-                onClick={() => {
-                  setBillingView("credits");
-                  trackEvent("pricing_view_changed", { view: "credits" });
-                }}
-                className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
-                  billingView === "credits" ? "bg-slate-900 text-white" : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                {t("pricing_credits")}
-              </button>
-            </div>
-          </div>
-
           <div className="mt-6 inline-flex rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">
             {lang === "mn" ? `Нэг удаагийн setup fee: ${SETUP_FEE.toLocaleString()}₮` : `One-time setup fee: ${SETUP_FEE.toLocaleString()}₮`}
           </div>
         </div>
 
-        {billingView === "monthly" ? (
-          <div className="mt-12 grid gap-5 lg:grid-cols-4">
+        <div className="mt-12 grid gap-5 lg:grid-cols-4">
             {MONTHLY_PLANS.map((plan) => {
               const details = planDetails[plan.tier];
               const audience = lang === "mn" ? details.audienceMn : details.audienceEn;
@@ -176,49 +140,6 @@ export default function PricingSection() {
               );
             })}
           </div>
-        ) : (
-          <div className="mt-12">
-            <div className="grid gap-5 md:grid-cols-3">
-              {creditPacks.map((pack) => (
-                <div key={pack.id} className={`surface-panel flex rounded-[30px] p-1 ${pack.popular ? "ring-2 ring-slate-900" : ""}`}>
-                  <div className="flex w-full flex-col rounded-[26px] bg-white p-6">
-                    <div className="flex items-start justify-between gap-3">
-                      <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">
-                        {pack.id}
-                      </p>
-                      {pack.popular && (
-                        <div className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
-                          {t("pricing_popular")}
-                        </div>
-                      )}
-                    </div>
-                    <div className="mt-6">
-                      <p className="text-4xl font-black text-slate-900">{pack.credits.toLocaleString()}</p>
-                      <p className="mt-1 text-sm text-slate-500">{t("pricing_credits_label")}</p>
-                    </div>
-                    <div className="mt-6 flex items-end gap-2">
-                      <span className="text-3xl font-black text-slate-900">{pack.price.toLocaleString()}</span>
-                      <span className="pb-1 text-sm text-slate-400">₮</span>
-                    </div>
-                    <p className="mt-2 text-sm text-slate-500">{lang === "mn" ? "Dashboard-оос авах боломжтой" : "Available from dashboard top-up"}</p>
-                    <Link
-                      href="/register?plan=standard&source=pricing-credits"
-                      onClick={() => trackEvent("pricing_credit_pack_click", { pack: pack.id, amount: pack.price })}
-                      className="mt-8 block rounded-full border border-slate-200 bg-white px-4 py-3 text-center text-sm font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
-                    >
-                      {lang === "mn" ? "Эхлээд багц сонгоод нэвтрэх" : "Start with a monthly plan"}
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <p className="mt-5 text-center text-sm text-slate-500">
-              {lang === "mn"
-                ? "Credit top-up нь workspace идэвхжсэний дараа dashboard дотор харагдана."
-                : "Credit top-up appears inside the workspace after your monthly plan is active."}
-            </p>
-          </div>
-        )}
       </div>
     </section>
   );
