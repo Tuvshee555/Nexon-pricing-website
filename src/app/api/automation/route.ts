@@ -13,7 +13,10 @@ export async function GET() {
 
   const businessId = businesses[0].id as string;
   const triggers = await sql`
-    SELECT * FROM keyword_triggers WHERE business_id = ${businessId} ORDER BY created_at DESC
+    SELECT id, business_id, keyword, match_type, response, platform, enabled, sequence_id, trigger_fires_count, created_at
+    FROM keyword_triggers
+    WHERE business_id = ${businessId}
+    ORDER BY created_at DESC
   `;
 
   return NextResponse.json({ triggers });
@@ -25,7 +28,7 @@ export async function POST(request: Request) {
 
   const userId = session.user.id;
   const body = await request.json();
-  const { keyword, matchType, response, platform } = body;
+  const { keyword, matchType, response, platform, sequenceId } = body;
 
   if (!keyword || !response) return NextResponse.json({ error: "keyword and response required" }, { status: 400 });
 
@@ -34,9 +37,9 @@ export async function POST(request: Request) {
   const businessId = businesses[0].id as string;
 
   const rows = await sql`
-    INSERT INTO keyword_triggers (business_id, keyword, match_type, response, platform)
-    VALUES (${businessId}, ${keyword}, ${matchType || "contains"}, ${response}, ${platform || "all"})
-    RETURNING *
+    INSERT INTO keyword_triggers (business_id, keyword, match_type, response, platform, sequence_id)
+    VALUES (${businessId}, ${keyword}, ${matchType || "contains"}, ${response}, ${platform || "all"}, ${sequenceId || null})
+    RETURNING id, business_id, keyword, match_type, response, platform, enabled, sequence_id, trigger_fires_count, created_at
   `;
 
   return NextResponse.json({ trigger: rows[0] });

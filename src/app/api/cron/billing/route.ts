@@ -14,13 +14,14 @@ export async function POST(request: NextRequest) {
 async function handleBilling(request: NextRequest) {
   try {
     const authHeader = request.headers.get("authorization");
+    const isVercelCron = request.headers.get("x-vercel-cron") === "1";
     const cronSecret = process.env.CRON_SECRET;
 
-    if (!cronSecret) {
+    if (!cronSecret && !isVercelCron) {
       console.error("CRON_SECRET not configured");
       return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
     }
-    if (authHeader !== `Bearer ${cronSecret}`) {
+    if (!isVercelCron && authHeader !== `Bearer ${cronSecret}`) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

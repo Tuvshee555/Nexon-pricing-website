@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createHmac } from "crypto";
 import { sql } from "@/lib/db";
 import { appendKnowledgeSection } from "@/lib/bot-prompt";
+import { logMessageDelivery, sendMetaMessage, upsertConversationThreadMessages } from "@/lib/meta";
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN!;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY!;
@@ -78,7 +79,7 @@ export async function POST(request: Request) {
             LIMIT 1
           `,
           sql`
-            SELECT keyword, match_type, response FROM keyword_triggers
+            SELECT id, keyword, match_type, response, sequence_id FROM keyword_triggers
             WHERE business_id = ${businessId} AND enabled = true
             AND (platform = 'all' OR platform = ${platform})
           `,
@@ -90,29 +91,62 @@ export async function POST(request: Request) {
         if (!business || business.status !== "active" || !business.billing_active || plan?.plan_type !== "monthly") continue;
 
         const lowerText = messageText.toLowerCase();
-        const matchedTrigger = (keywordTriggers as Array<{ keyword: string; match_type: string; response: string }>).find((t) => {
+        const matchedTrigger = (keywordTriggers as Array<{
+          id: string;
+          keyword: string;
+          match_type: string;
+          response: string;
+          sequence_id?: string | null;
+        }>).find((t) => {
           const kw = t.keyword.toLowerCase();
           if (t.match_type === "exact") return lowerText === kw;
           if (t.match_type === "starts_with") return lowerText.startsWith(kw);
           return lowerText.includes(kw);
         });
 
-        if (matchedTrigger && pageAccessToken) {
-          await sendFacebookMessage(senderId, matchedTrigger.response, platform, pageAccessToken);
-          const existingMessages: Array<{ role: string; content: string }> = Array.isArray(threads[0]?.messages)
-            ? (threads[0].messages as Array<{ role: string; content: string }>)
-            : [];
-          const updatedMessages = [
-            ...existingMessages,
-            { role: "user", content: messageText },
-            { role: "assistant", content: matchedTrigger.response },
-          ].slice(-100);
+        if (matchedTrigger) {
           await sql`
-            INSERT INTO conversation_threads (business_id, platform, sender_id, messages, last_message_at)
-            VALUES (${businessId}, ${platform}, ${senderId}, ${JSON.stringify(updatedMessages)}, NOW())
-            ON CONFLICT (business_id, platform, sender_id)
-            DO UPDATE SET messages = ${JSON.stringify(updatedMessages)}, last_message_at = NOW()
+            UPDATE keyword_triggers
+            SET trigger_fires_count = COALESCE(trigger_fires_count, 0) + 1
+            WHERE id = ${matchedTrigger.id}
           `;
+
+          if (matchedTrigger.sequence_id) {
+            await sql`
+              INSERT INTO sequence_enrollments (
+                business_id, sequence_id, sender_id, platform, enrolled_at, current_step, completed
+              )
+              VALUES (${businessId}, ${matchedTrigger.sequence_id}, ${senderId}, ${platform}, NOW(), 1, false)
+              ON CONFLICT (business_id, sequence_id, sender_id, platform)
+              DO UPDATE SET enrolled_at = NOW(), current_step = 1, completed = false
+            `;
+          }
+
+          if (pageAccessToken) {
+            try {
+              await sendMetaMessage({
+                recipientId: senderId,
+                text: matchedTrigger.response,
+                pageAccessToken,
+              });
+            } catch (err) {
+              console.error("[webhook] keyword send failed:", err);
+            }
+            await logMessageDelivery({
+              businessId,
+              platform,
+            });
+            await upsertConversationThreadMessages({
+              businessId,
+              platform,
+              senderId,
+              messages: [
+                { role: "user", content: messageText },
+                { role: "assistant", content: matchedTrigger.response },
+              ],
+            });
+          }
+
           continue;
         }
 
@@ -157,30 +191,34 @@ export async function POST(request: Request) {
           total_tokens: 0,
         };
 
-        await sql`
-          INSERT INTO message_logs (
-            business_id, platform, message_count, prompt_tokens, completion_tokens, total_tokens, credits_used, source
-          )
-          VALUES (
-            ${businessId}, ${platform}, 1, ${usage.prompt_tokens}, ${usage.completion_tokens}, ${usage.total_tokens}, 0, 'api'
-          )
-        `;
-
-        const updatedMessages = [
-          ...fullHistory,
-          { role: "user", content: messageText },
-          { role: "assistant", content: reply },
-        ].slice(-100);
-
-        await sql`
-          INSERT INTO conversation_threads (business_id, platform, sender_id, messages, last_message_at)
-          VALUES (${businessId}, ${platform}, ${senderId}, ${JSON.stringify(updatedMessages)}, NOW())
-          ON CONFLICT (business_id, platform, sender_id)
-          DO UPDATE SET messages = ${JSON.stringify(updatedMessages)}, last_message_at = NOW()
-        `;
+        await logMessageDelivery({
+          businessId,
+          platform,
+          promptTokens: usage.prompt_tokens,
+          completionTokens: usage.completion_tokens,
+          totalTokens: usage.total_tokens,
+          source: "api",
+        });
+        await upsertConversationThreadMessages({
+          businessId,
+          platform,
+          senderId,
+          messages: [
+            { role: "user", content: messageText },
+            { role: "assistant", content: reply },
+          ],
+        });
 
         if (pageAccessToken) {
-          await sendFacebookMessage(senderId, reply, platform, pageAccessToken);
+          try {
+            await sendMetaMessage({
+              recipientId: senderId,
+              text: reply,
+              pageAccessToken,
+            });
+          } catch (err) {
+            console.error("[webhook] AI send failed:", err);
+          }
         }
       }
     }
@@ -189,30 +227,5 @@ export async function POST(request: Request) {
   } catch (err) {
     console.error("Webhook error:", err);
     return NextResponse.json({ success: true }, { status: 200 });
-  }
-}
-
-async function sendFacebookMessage(
-  recipientId: string,
-  text: string,
-  platform: string,
-  pageAccessToken: string
-): Promise<void> {
-  void platform;
-  try {
-    const res = await fetch(`https://graph.facebook.com/v19.0/me/messages?access_token=${pageAccessToken}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        recipient: { id: recipientId },
-        message: { text },
-        messaging_type: "RESPONSE",
-      }),
-    });
-    if (!res.ok) {
-      console.error("FB send error:", await res.text());
-    }
-  } catch (err) {
-    console.error("FB send failed:", err);
   }
 }

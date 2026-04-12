@@ -89,6 +89,73 @@ export interface PlatformAccount {
   token_expires_at?: string;
 }
 
+export interface KeywordTrigger {
+  id: string;
+  business_id: string;
+  keyword: string;
+  match_type: "contains" | "exact" | "starts_with";
+  response: string;
+  platform: Platform | "all";
+  enabled: boolean;
+  sequence_id?: string | null;
+  trigger_fires_count?: number;
+  created_at: string;
+}
+
+export interface Sequence {
+  id: string;
+  business_id: string;
+  name: string;
+  enabled: boolean;
+  created_at: string;
+  step_count?: number;
+}
+
+export interface SequenceStep {
+  id: string;
+  sequence_id: string;
+  message: string;
+  delay_days: number;
+  delay_hours: number;
+  step_order: number;
+  created_at?: string;
+}
+
+export interface SequenceEnrollment {
+  id: string;
+  business_id: string;
+  sequence_id: string;
+  sender_id: string;
+  platform: Platform;
+  enrolled_at: string;
+  current_step: number;
+  completed: boolean;
+}
+
+export interface ContactSegmentFilter {
+  field: "platform" | "last_message_at" | "has_tag";
+  operator: string;
+  value: string;
+}
+
+export interface ContactSegment {
+  id: string;
+  business_id: string;
+  name: string;
+  filters: ContactSegmentFilter[];
+  created_at: string;
+}
+
+export interface Flow {
+  id: string;
+  business_id: string;
+  name: string;
+  nodes: unknown[];
+  edges: unknown[];
+  enabled: boolean;
+  created_at?: string;
+}
+
 export const SETUP_FEE = 75000;
 
 export const MONTHLY_PLANS = [

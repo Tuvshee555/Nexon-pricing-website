@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     await sql`
       INSERT INTO contact_tags (business_id, sender_id, platform, tag)
       VALUES (${businessId}, ${senderId}, ${platform}, ${tag})
-      ON CONFLICT DO NOTHING
+      ON CONFLICT (business_id, sender_id, platform, tag) DO NOTHING
     `;
   }
 

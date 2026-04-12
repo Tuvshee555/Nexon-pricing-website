@@ -9,12 +9,16 @@ export default async function SetupBusinessPage({
 }) {
   const { userId } = await params;
 
-  const existing = await sql`SELECT id FROM businesses WHERE user_id = ${userId} LIMIT 1`;
+  const existing = (await sql`SELECT id FROM businesses WHERE user_id = ${userId} LIMIT 1`) as Array<{
+    id: string;
+  }>;
   if (existing[0]) {
     redirect(`/admin/clients/${existing[0].id as string}`);
   }
 
-  const userRows = await sql`SELECT email FROM users WHERE id = ${userId} LIMIT 1`;
+  const userRows = (await sql`SELECT email FROM users WHERE id = ${userId} LIMIT 1`) as Array<{
+    email: string;
+  }>;
 
   return <SetupBusinessForm userId={userId} email={(userRows[0]?.email as string) || ""} />;
 }

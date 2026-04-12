@@ -5,9 +5,9 @@ import { MONTHLY_PLANS } from "@/types";
 export const revalidate = 0;
 
 export default async function AdminClientsPage() {
-  const users = await sql`
+  const users = (await sql`
     SELECT id, email, created_at FROM users WHERE role = 'client' ORDER BY created_at DESC
-  `;
+  `) as Array<{ id: string; email: string; created_at: string }>;
 
   if (!users.length) {
     return (
@@ -24,10 +24,17 @@ export default async function AdminClientsPage() {
   const userIds = users.map((u) => u.id as string);
 
   const businesses = userIds.length
-    ? await sql`
+    ? ((await sql`
         SELECT id, user_id, name, status, virtual_balance, subscription_price
         FROM businesses WHERE user_id = ANY(${userIds}::uuid[])
-      `
+      `) as Array<{
+        id: string;
+        user_id: string;
+        name: string;
+        status: string;
+        virtual_balance: number;
+        subscription_price: number;
+      }>)
     : [];
 
   const businessesByUserId = new Map<string, typeof businesses[0]>();
@@ -40,7 +47,12 @@ export default async function AdminClientsPage() {
   const businessIds = businesses.map((b) => b.id as string);
 
   const plans = businessIds.length
-    ? await sql`SELECT business_id, plan_type, monthly_tier, monthly_price FROM plans WHERE business_id = ANY(${businessIds}::uuid[])`
+    ? ((await sql`SELECT business_id, plan_type, monthly_tier, monthly_price FROM plans WHERE business_id = ANY(${businessIds}::uuid[])`) as Array<{
+        business_id: string;
+        plan_type: string;
+        monthly_tier?: string;
+        monthly_price?: number;
+      }>)
     : [];
 
   const plansByBusinessId = new Map<string, typeof plans[0]>();
