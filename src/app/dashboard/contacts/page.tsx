@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface Contact {
   sender_id: string;
@@ -64,7 +65,7 @@ export default function ContactsPage() {
 
   const activeSegment = segments.find((segment) => segment.id === activeSegmentId) ?? null;
 
-  const loadContacts = async (segmentId: string | null = activeSegmentId) => {
+  const loadContacts = useCallback(async (segmentId: string | null = activeSegmentId) => {
     setLoadingContacts(true);
     const url = segmentId ? `/api/contacts?segmentId=${encodeURIComponent(segmentId)}` : "/api/contacts";
     const res = await fetch(url);
@@ -72,23 +73,23 @@ export default function ContactsPage() {
     setContacts(data.contacts || []);
     setLoadingContacts(false);
     setSelected(null);
-  };
+  }, [activeSegmentId]);
 
-  const loadSegments = async () => {
+  const loadSegments = useCallback(async () => {
     setLoadingSegments(true);
     const res = await fetch("/api/contacts/segments");
     const data = await res.json();
     setSegments(data.segments || []);
     setLoadingSegments(false);
-  };
-
-  useEffect(() => {
-    void loadSegments();
   }, []);
 
   useEffect(() => {
+    void loadSegments();
+  }, [loadSegments]);
+
+  useEffect(() => {
     void loadContacts(activeSegmentId);
-  }, [activeSegmentId]);
+  }, [activeSegmentId, loadContacts]);
 
   const addTag = async (contact: Contact) => {
     if (!newTag.trim()) return;
@@ -202,6 +203,15 @@ export default function ContactsPage() {
     });
   }, [contacts, search, filterPlatform]);
 
+  const contactCount = contacts.length;
+  const segmentCount = segments.length;
+  const taggedCount = contacts.filter((contact) => (contact.tags || []).length > 0).length;
+  const topPlatform = contacts.reduce<Record<string, number>>((acc, contact) => {
+    acc[contact.platform] = (acc[contact.platform] || 0) + 1;
+    return acc;
+  }, {});
+  const leadingPlatform = Object.entries(topPlatform).sort((a, b) => b[1] - a[1])[0]?.[0] || "instagram";
+
   const renderFilterValue = (filter: SegmentFilter, index: number) => {
     if (filter.field === "platform") {
       return (
@@ -239,7 +249,37 @@ export default function ContactsPage() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="min-h-[calc(100vh-7rem)] space-y-6">
+      <section className="surface-card rounded-[30px] p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <p className="section-label">Contacts</p>
+            <h1 className="mt-4 text-4xl font-black tracking-[-0.04em] text-slate-950">
+              Organize contacts, segments, and follow-up signals
+            </h1>
+            <p className="mt-3 text-base leading-7 text-slate-600">
+              Keep the audience clean, tag the people who matter, and build segments that help the team move faster.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/dashboard/automation" className="rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50">
+              Review triggers
+            </Link>
+            <Link href="/dashboard/sequences" className="rounded-full bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800">
+              Open sequences
+            </Link>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-3 md:grid-cols-4">
+          <MetricCard label="Total contacts" value={String(contactCount)} note="Across loaded data" />
+          <MetricCard label="Tagged contacts" value={String(taggedCount)} note="Ready for segmentation" />
+          <MetricCard label="Segments" value={String(segmentCount)} note="Saved audience slices" />
+          <MetricCard label="Top platform" value={leadingPlatform} note="Most active channel" />
+        </div>
+      </section>
+
+      <div className="flex min-h-[72vh] overflow-hidden bg-gray-50">
       <div className="flex flex-col w-full max-w-sm border-r border-gray-200 bg-white flex-shrink-0">
         <div className="px-5 pt-6 pb-4 border-b border-gray-100">
           <div className="flex items-center justify-between mb-4">
@@ -602,6 +642,17 @@ export default function ContactsPage() {
           <p className="text-sm font-medium">Select a contact to view details</p>
         </div>
       )}
+      </div>
+    </div>
+  );
+}
+
+function MetricCard({ label, value, note }: { label: string; value: string; note: string }) {
+  return (
+    <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{label}</p>
+      <p className="mt-3 text-2xl font-black tracking-[-0.03em] text-slate-950">{value}</p>
+      <p className="mt-2 text-sm text-slate-500">{note}</p>
     </div>
   );
 }

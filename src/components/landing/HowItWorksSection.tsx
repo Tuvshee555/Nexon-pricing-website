@@ -1,121 +1,99 @@
 "use client";
 
-import { useLanguage } from "@/contexts/LanguageContext";
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function HowItWorksSection() {
-  const { t } = useLanguage();
+  const { lang } = useLanguage();
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-80px" });
 
-  const steps = [
-    {
-      number: "01",
-      titleKey: "how_step1_title" as const,
-      descKey: "how_step1_desc" as const,
-      icon: (
-        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-        </svg>
-      ),
-    },
-    {
-      number: "02",
-      titleKey: "how_step2_title" as const,
-      descKey: "how_step2_desc" as const,
-      icon: (
-        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-        </svg>
-      ),
-    },
-    {
-      number: "03",
-      titleKey: "how_step3_title" as const,
-      descKey: "how_step3_desc" as const,
-      icon: (
-        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-        </svg>
-      ),
-    },
-  ];
+  const copy =
+    lang === "mn"
+      ? {
+          eyebrow: "Хэрхэн ажиллах вэ",
+          title: "Эхний setup-аас эхлээд live inbox хүртэл гурван ойлгомжтой алхам",
+          steps: [
+            {
+              number: "01",
+              title: "Сувгаа холбоно",
+              description: "Instagram болон Messenger account-уудаа холбож, ямар төрлийн чат ирдгийг Nexon-д ойлгуулна.",
+            },
+            {
+              number: "02",
+              title: "AI урсгалаа тохируулна",
+              description: "Үнэ, хүргэлт, захиалга, manager handoff зэрэг мөчүүдэд ямар logic ажиллахыг сонгоно.",
+            },
+            {
+              number: "03",
+              title: "Live visibility авна",
+              description: "Dashboard дээрээ automation health, lead activity, inbox handoff-уудаа өдөр бүр хянана.",
+            },
+          ],
+        }
+      : {
+          eyebrow: "How it works",
+          title: "Three clear steps from first setup to a live operating inbox",
+          steps: [
+            {
+              number: "01",
+              title: "Connect your channels",
+              description: "Link Instagram and Messenger so Nexon can understand where conversations arrive from.",
+            },
+            {
+              number: "02",
+              title: "Shape the AI flow",
+              description: "Define how pricing, delivery, order, and human handoff moments should behave.",
+            },
+            {
+              number: "03",
+              title: "Run with live visibility",
+              description: "Track automation health, lead activity, and handoff behavior from one dashboard every day.",
+            },
+          ],
+        };
 
   return (
-    <section id="how-it-works" ref={ref} className="py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-      {/* Background glow */}
-      <div className="pointer-events-none absolute inset-0 flex items-end justify-center">
-        <div
-          className="h-[30rem] w-[50rem] rounded-full opacity-8"
-          style={{
-            background: "radial-gradient(ellipse, rgba(0,212,255,0.3) 0%, transparent 70%)",
-            filter: "blur(80px)",
-          }}
-        />
-      </div>
-
-      <div className="max-w-7xl mx-auto relative">
+    <section id="how-it-works" ref={ref} className="relative px-4 py-20 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl">
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.7, ease: "easeOut" }}
-          className="text-center mb-16"
+          transition={{ duration: 0.55 }}
+          className="mx-auto max-w-3xl text-center"
         >
-          <h2 className="text-4xl sm:text-5xl font-black text-text-primary">
-            {t("how_title")}
+          <p className="section-label justify-center">{copy.eyebrow}</p>
+          <h2 className="mt-5 text-4xl font-black tracking-[-0.03em] text-slate-950 sm:text-5xl">
+            {copy.title}
           </h2>
-          <div className="mt-6 mx-auto h-px w-24 bg-gradient-to-r from-transparent via-accent/60 to-transparent" />
         </motion.div>
 
-        <div className="relative">
-          {/* Animated connection line */}
-          <motion.div
-            initial={{ scaleX: 0 }}
-            animate={isInView ? { scaleX: 1 } : {}}
-            transition={{ delay: 0.5, duration: 1, ease: "easeInOut" }}
-            className="hidden lg:block absolute top-10 left-[20%] right-[20%] h-px origin-left"
-            style={{
-              background: "linear-gradient(90deg, rgba(15,79,232,0.8), rgba(0,212,255,0.8))",
-              boxShadow: "0 0 8px rgba(0,212,255,0.4)",
-            }}
-          />
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {steps.map((step, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 40 }}
-                animate={isInView ? { opacity: 1, y: 0 } : {}}
-                transition={{ delay: 0.2 + i * 0.2, duration: 0.7, ease: "easeOut" }}
-                className="relative text-center group"
-              >
-                <motion.div
-                  whileHover={{ scale: 1.08, rotate: 3 }}
-                  transition={{ type: "spring", stiffness: 300 }}
-                  className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-card-gradient border border-primary/30 text-accent mb-6 relative z-10 transition-all duration-300 group-hover:border-primary/60 group-hover:shadow-lg"
-                  style={{ boxShadow: "0 0 0 0 rgba(0,212,255,0.3)" }}
-                >
-                  {step.icon}
-                  <motion.span
-                    initial={{ scale: 0 }}
-                    animate={isInView ? { scale: 1 } : {}}
-                    transition={{ delay: 0.4 + i * 0.2, type: "spring", stiffness: 400 }}
-                    className="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full text-white text-xs font-bold flex items-center justify-center"
-                    style={{ boxShadow: "0 0 12px rgba(15,79,232,0.6)" }}
-                  >
-                    {i + 1}
-                  </motion.span>
-                </motion.div>
-                <h3 className="text-xl font-bold text-text-primary mb-3 group-hover:text-gradient transition-all duration-300">
-                  {t(step.titleKey)}
-                </h3>
-                <p className="text-text-secondary leading-relaxed">
-                  {t(step.descKey)}
-                </p>
-              </motion.div>
-            ))}
-          </div>
+        <div className="relative mt-12 grid gap-5 lg:grid-cols-3">
+          {copy.steps.map((step, index) => (
+            <motion.div
+              key={step.number}
+              initial={{ opacity: 0, y: 24 }}
+              animate={isInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.55, delay: index * 0.08 }}
+              className="surface-card relative rounded-[30px] p-6"
+            >
+              <div className="flex items-center justify-between">
+                <div className="rounded-full bg-blue-50 px-4 py-2 text-xs font-black tracking-[0.16em] text-primary">
+                  {step.number}
+                </div>
+                {index < copy.steps.length - 1 && (
+                  <div className="hidden text-slate-300 lg:block">
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M5 12h14m-5-5 5 5-5 5" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+              <h3 className="mt-6 text-2xl font-black text-slate-900">{step.title}</h3>
+              <p className="mt-3 text-base leading-7 text-slate-600">{step.description}</p>
+            </motion.div>
+          ))}
         </div>
       </div>
     </section>

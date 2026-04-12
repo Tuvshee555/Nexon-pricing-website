@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useEffect, useState, useContext } from "react";
 import { Language, translations, TranslationKey } from "@/lib/i18n";
 
 interface LanguageContextType {
@@ -16,7 +16,17 @@ const LanguageContext = createContext<LanguageContextType>({
 });
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLang] = useState<Language>("mn");
+  const [lang, setLang] = useState<Language>(() => {
+    if (typeof window === "undefined") return "en";
+    const stored = window.localStorage.getItem("nexon-lang");
+    if (stored === "mn" || stored === "en") return stored;
+    return window.navigator.language.toLowerCase().startsWith("mn") ? "mn" : "en";
+  });
+
+  useEffect(() => {
+    window.localStorage.setItem("nexon-lang", lang);
+    document.documentElement.lang = lang;
+  }, [lang]);
 
   const t = (key: TranslationKey): string => {
     return translations[lang][key] || translations.mn[key] || key;

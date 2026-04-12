@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   const business = businesses[0] ?? null;
   if (!business) return NextResponse.json({ error: "Business not found" }, { status: 404 });
 
-  const basePrompt = botPrompt?.trim() || `Ð¢Ð° ${botName || "Nexon Bot"} Ð½ÑÑ€Ñ‚ÑÐ¹ Ñ‚ÑƒÑÐ»Ð°Ñ… AI Ð±Ð°Ð¹Ð½Ð°.`;
+  const basePrompt = botPrompt?.trim() || `Та ${botName || "Nexon Bot"} нэртэй туслах AI байна.`;
   const systemPrompt = appendKnowledgeSection(basePrompt, business.knowledge_json);
 
   const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {

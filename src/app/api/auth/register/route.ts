@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import bcrypt from "bcryptjs";
+import { getAppUrl } from "@/lib/app-url";
 
 export async function POST(request: Request) {
   try {
@@ -27,8 +28,10 @@ export async function POST(request: Request) {
       RETURNING id
     `;
 
+    const appUrl = getAppUrl(request);
+
     // Notify admin via Telegram (fire and forget)
-    fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/notify/new-user`, {
+    void fetch(new URL("/api/notify/new-user", appUrl).toString(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
 
 interface Sequence {
   id: string;
@@ -37,7 +38,7 @@ export default function SequencesPage() {
 
   const selectedSequence = sequences.find((sequence) => sequence.id === selectedSequenceId) ?? null;
 
-  const loadSequences = async () => {
+  const loadSequences = useCallback(async () => {
     setLoadingSequences(true);
     const res = await fetch("/api/sequences");
     const data = await res.json();
@@ -47,19 +48,19 @@ export default function SequencesPage() {
       setSelectedSequenceId(items[0].id);
     }
     setLoadingSequences(false);
-  };
+  }, [selectedSequenceId]);
 
-  const loadSteps = async (sequenceId: string) => {
+  const loadSteps = useCallback(async (sequenceId: string) => {
     setLoadingSteps(true);
     const res = await fetch(`/api/sequences/${sequenceId}/steps`);
     const data = await res.json();
     setSteps(data.steps || []);
     setLoadingSteps(false);
-  };
+  }, []);
 
   useEffect(() => {
     void loadSequences();
-  }, []);
+  }, [loadSequences]);
 
   useEffect(() => {
     if (!selectedSequenceId) {
@@ -68,7 +69,7 @@ export default function SequencesPage() {
       return;
     }
     void loadSteps(selectedSequenceId);
-  }, [selectedSequenceId]);
+  }, [selectedSequenceId, loadSteps]);
 
   useEffect(() => {
     setSequenceNameDraft(selectedSequence?.name || "");
@@ -181,9 +182,41 @@ export default function SequencesPage() {
     );
   };
 
+  const sequenceCount = sequences.length;
+  const activeCount = sequences.filter((sequence) => sequence.enabled).length;
+  const totalSteps = steps.length + sequences.reduce((sum, sequence) => sum + (sequence.step_count || 0), 0);
+
   return (
-    <div className="min-h-screen bg-gray-50 p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-[340px_1fr] gap-6">
+    <div className="min-h-[calc(100vh-7rem)] space-y-6">
+      <section className="surface-card rounded-[30px] p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <p className="section-label">Sequences</p>
+            <h1 className="mt-4 text-4xl font-black tracking-[-0.04em] text-slate-950">
+              Build follow-up journeys that keep working after the first message
+            </h1>
+            <p className="mt-3 text-base leading-7 text-slate-600">
+              Drip campaigns are strongest when they are easy to read, easy to edit, and obviously tied to a customer goal.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/dashboard/automation" className="rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50">
+              Review triggers
+            </Link>
+            <Link href="/dashboard/contacts" className="rounded-full bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800">
+              View contacts
+            </Link>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-3 md:grid-cols-3">
+          <MetricCard label="Sequences" value={String(sequenceCount)} note="Reusable journeys" />
+          <MetricCard label="Active" value={String(activeCount)} note="Currently live" />
+          <MetricCard label="Total steps" value={String(totalSteps)} note="Across all sequences" />
+        </div>
+      </section>
+
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 xl:grid-cols-[340px_1fr]">
         <div className="bg-white border border-gray-200 rounded-3xl shadow-sm overflow-hidden">
           <div className="p-5 border-b border-gray-100">
             <h1 className="text-2xl font-black text-gray-900">Sequences</h1>
@@ -413,6 +446,16 @@ export default function SequencesPage() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function MetricCard({ label, value, note }: { label: string; value: string; note: string }) {
+  return (
+    <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{label}</p>
+      <p className="mt-3 text-2xl font-black tracking-[-0.03em] text-slate-950">{value}</p>
+      <p className="mt-2 text-sm text-slate-500">{note}</p>
     </div>
   );
 }

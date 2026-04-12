@@ -5,6 +5,7 @@ import { sql } from "@/lib/db";
 import { MONTHLY_PLANS } from "@/types";
 import { createInvoice } from "@/lib/qpay";
 import { insertTransaction } from "@/lib/transactions";
+import { getAppUrl } from "@/lib/app-url";
 
 export async function POST(request: Request) {
   try {
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
     }
 
     const senderInvoiceNo = `NEXON-${Date.now()}-${businessId.slice(0, 8)}`;
-    const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/qpay/callback`;
+    const callbackUrl = new URL("/api/qpay/callback", getAppUrl(request)).toString();
     const description = `Nexon сарын захиалга: ${plan.nameMn} (${amount.toLocaleString()}₮)`;
 
     const invoice = await createInvoice({ amount, description, callbackUrl, senderInvoiceNo });

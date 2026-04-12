@@ -31,7 +31,7 @@ const en = {
   // Pricing
   pricing_title: "Pricing",
   pricing_subtitle:
-    "Choose the plan that suits you. Monthly and credit options available.",
+    "Start with a monthly plan and add credits later from your dashboard.",
   pricing_monthly: "Monthly Plans",
   pricing_credits: "Credit Packs",
   pricing_popular: "Popular",

@@ -35,10 +35,10 @@ interface Props {
 }
 
 const TONE_OPTIONS = [
-  { value: "friendly", label: "Найрсаг", desc: "Дулаахан, эелдэг" },
-  { value: "professional", label: "Мэргэжлийн", desc: "Албан ёсны, нарийн" },
-  { value: "formal", label: "Албан ёсны", desc: "Нухацтай, хүндэтгэлтэй" },
-  { value: "casual", label: "Хэвийн", desc: "Ярианы хэлтэй" },
+  { value: "friendly", label: "Friendly", desc: "Warm, approachable, helpful" },
+  { value: "professional", label: "Professional", desc: "Clear, polished, precise" },
+  { value: "formal", label: "Formal", desc: "Measured and respectful" },
+  { value: "casual", label: "Casual", desc: "Relaxed and conversational" },
 ] as const;
 
 const SECTION_META: Array<{
@@ -51,41 +51,41 @@ const SECTION_META: Array<{
 }> = [
   {
     key: "businessContext",
-    label: "Бизнесийн нэр ба контекст",
-    helper: "Танай бизнес юу хийдэг, хаана ажилладаг, ямар төрлийн хэрэглэгчдэд үйлчилдгийг бичнэ.",
-    placeholder: "Ж: Nexon Coffee нь Улаанбаатарт байрлах specialty coffee shop...",
+    label: "Business context",
+    helper: "Tell the bot what the business does, where it operates, and who it serves.",
+    placeholder: "Example: Nexon Coffee is a specialty coffee shop in Ulaanbaatar...",
     required: true,
     rows: 3,
   },
   {
     key: "offerings",
-    label: "Юу зардаг вэ",
-    helper: "Гол бүтээгдэхүүн, үйлчилгээ, үнийн мэдээллийн хүрээ, захиалгын нөхцөл.",
-    placeholder: "Ж: Espresso, latte, cold brew, dessert...",
+    label: "What you sell",
+    helper: "List products, services, price ranges, and ordering rules.",
+    placeholder: "Example: Espresso, latte, cold brew, desserts...",
     required: true,
     rows: 4,
   },
   {
     key: "faq",
-    label: "Түгээмэл асуултууд (FAQ)",
-    helper: "Хэрэглэгчдийн хамгийн их асуудаг 3-10 асуулт болон товч хариултыг оруулна.",
-    placeholder: "Ж: Ажиллах цаг? Хүргэлт бий юу? Буцаалтын бодлого?",
+    label: "Frequently asked questions",
+    helper: "Add the common questions users ask most often.",
+    placeholder: "Example: Hours? Delivery? Refund policy?",
     required: true,
     rows: 4,
   },
   {
     key: "outOfScope",
-    label: "Хариулах ЁСГҮЙ зүйлс",
-    helper: "Бот таамаглахгүй, өгөхгүй мэдээллүүд. Итгэлцлийг хамгаалах хамгийн чухал хэсэг.",
-    placeholder: "Ж: Эмчилгээний зөвлөгөө, хууль эрх зүйн зөвлөгөө, баталгаагүй үнэ...",
+    label: "What not to answer",
+    helper: "Prevent the bot from guessing on sensitive or unsupported topics.",
+    placeholder: "Example: Medical advice, legal advice, unconfirmed pricing...",
     required: true,
     rows: 3,
   },
   {
     key: "extraNotes",
-    label: "Нэмэлт заавар",
-    helper: "Тусгай нөхцөл, brand voice, escalation заавар.",
-    placeholder: "Ж: Хэрэглэгч уурласан бол эелдгээр уучлал хүсээд хүний оператор руу шилжүүлэх...",
+    label: "Extra notes",
+    helper: "Add special rules, brand voice notes, or escalation instructions.",
+    placeholder: "Example: If the user is upset, apologize first and hand off to a human...",
     rows: 3,
   },
 ];
@@ -93,10 +93,10 @@ const SECTION_META: Array<{
 const DEFAULT_BOT_NAME = "Nexon Bot";
 
 const HEALTH_META: Record<ReturnType<typeof evaluatePromptHealth>["level"], { color: string; label: string }> = {
-  excellent: { color: "text-success", label: "Маш сайн" },
-  good: { color: "text-primary", label: "Сайн" },
-  fair: { color: "text-warning", label: "Дунд" },
-  poor: { color: "text-danger", label: "Сайжруулах шаардлагатай" },
+  excellent: { color: "text-emerald-600", label: "Excellent" },
+  good: { color: "text-slate-900", label: "Good" },
+  fair: { color: "text-amber-600", label: "Needs a little work" },
+  poor: { color: "text-red-600", label: "Needs improvement" },
 };
 
 export default function BotConfigForm({
@@ -107,7 +107,7 @@ export default function BotConfigForm({
   onSave,
   onSaved,
   onBack,
-  submitLabel = "Хадгалах",
+  submitLabel = "Save",
 }: Props) {
   const parsed = useMemo(() => parsePromptToSections(initialBotPrompt), [initialBotPrompt]);
   const [mode, setMode] = useState<"guided" | "advanced">(
@@ -140,10 +140,7 @@ export default function BotConfigForm({
   const requiredGuidedComplete = SECTION_META.filter((section) => section.required).every(
     (section) => guidedSections[section.key].trim().length > 0
   );
-  const canSave =
-    prompt.trim().length > 0 &&
-    promptLength <= 2000 &&
-    (mode === "advanced" || requiredGuidedComplete);
+  const canSave = prompt.trim().length > 0 && promptLength <= 2000 && (mode === "advanced" || requiredGuidedComplete);
 
   const handleModeChange = (nextMode: "guided" | "advanced") => {
     if (nextMode === mode) return;
@@ -173,12 +170,12 @@ export default function BotConfigForm({
       });
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error || "Тест алдаатай боллоо");
+        toast.error(data.error || "Test failed");
         return;
       }
       setTestReply(data.reply || "");
     } catch {
-      toast.error("Холболтын алдаа гарлаа");
+      toast.error("Connection error");
     } finally {
       setTesting(false);
     }
@@ -187,11 +184,11 @@ export default function BotConfigForm({
   const handleSave = async () => {
     if (!canSave) {
       if (promptLength > 2000) {
-        toast.error("Prompt 2000 тэмдэгтээс хэтэрсэн байна.");
+        toast.error("Prompt is over the 2000 character limit.");
       } else if (mode === "guided" && !requiredGuidedComplete) {
-        toast.error("Guided талбарын заавал хэсгүүдийг бүрэн бөглөнө үү.");
+        toast.error("Please complete the required guided fields.");
       } else {
-        toast.error("Bot-ийн тайлбар хоосон байна.");
+        toast.error("Bot prompt cannot be empty.");
       }
       return;
     }
@@ -205,10 +202,10 @@ export default function BotConfigForm({
         botTone,
       });
       if (!result.ok) {
-        toast.error(result.error || "Хадгалах үед алдаа гарлаа");
+        toast.error(result.error || "Could not save bot settings");
         return;
       }
-      toast.success("Bot тохиргоо хадгалагдлаа");
+      toast.success("Bot settings saved");
       onSaved?.();
     } finally {
       setSaving(false);
@@ -217,52 +214,50 @@ export default function BotConfigForm({
 
   return (
     <div className="space-y-5">
-      <div className="space-y-4">
+      <div className="space-y-4 rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
         <div>
-          <label className="block text-sm font-medium text-text-primary mb-2">Bot-ийн нэр</label>
+          <label className="mb-2 block text-sm font-medium text-slate-900">Bot name</label>
           <input
             type="text"
             value={botName}
             onChange={(e) => setBotName(e.target.value)}
             placeholder={DEFAULT_BOT_NAME}
-            className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text-primary placeholder:text-muted focus:outline-none focus:border-primary/60 transition-colors"
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder:text-slate-400 transition-colors focus:border-slate-400 focus:outline-none"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-text-primary mb-2">Хариулах маяг</label>
+          <label className="mb-2 block text-sm font-medium text-slate-900">Response tone</label>
           <div className="grid grid-cols-2 gap-2">
             {TONE_OPTIONS.map((tone) => (
               <button
                 key={tone.value}
                 type="button"
                 onClick={() => setBotTone(tone.value)}
-                className={`p-3 rounded-xl border text-left transition-all ${
-                  botTone === tone.value
-                    ? "bg-primary/10 border-primary/50"
-                    : "bg-surface-2 border-border hover:border-primary/30"
+                className={`rounded-xl border p-3 text-left transition-all ${
+                  botTone === tone.value ? "border-slate-900 bg-slate-50" : "border-slate-200 bg-white hover:border-slate-300"
                 }`}
               >
-                <p className={`text-sm font-medium ${botTone === tone.value ? "text-primary" : "text-text-primary"}`}>
+                <p className={`text-sm font-medium ${botTone === tone.value ? "text-slate-900" : "text-slate-900"}`}>
                   {tone.label}
                 </p>
-                <p className="text-xs text-muted">{tone.desc}</p>
+                <p className="text-xs text-slate-500">{tone.desc}</p>
               </button>
             ))}
           </div>
         </div>
 
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-sm font-medium text-text-primary">
-              Bot-ийн тайлбар <span className="text-danger">*</span>
+          <div className="mb-2 flex items-center justify-between">
+            <label className="text-sm font-medium text-slate-900">
+              Bot prompt <span className="text-red-500">*</span>
             </label>
-            <div className="inline-flex bg-surface-2 border border-border rounded-lg p-1">
+            <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
               <button
                 type="button"
                 onClick={() => handleModeChange("guided")}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                  mode === "guided" ? "bg-primary text-white" : "text-text-secondary hover:text-text-primary"
+                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  mode === "guided" ? "bg-slate-900 text-white" : "text-slate-500 hover:text-slate-900"
                 }`}
               >
                 Guided
@@ -270,8 +265,8 @@ export default function BotConfigForm({
               <button
                 type="button"
                 onClick={() => handleModeChange("advanced")}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                  mode === "advanced" ? "bg-primary text-white" : "text-text-secondary hover:text-text-primary"
+                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  mode === "advanced" ? "bg-slate-900 text-white" : "text-slate-500 hover:text-slate-900"
                 }`}
               >
                 Advanced
@@ -283,17 +278,17 @@ export default function BotConfigForm({
             <div className="space-y-3">
               {SECTION_META.map((section) => (
                 <div key={section.key}>
-                  <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">
                     {section.label}
-                    {section.required ? <span className="text-danger ml-1">*</span> : null}
+                    {section.required ? <span className="ml-1 text-red-500">*</span> : null}
                   </label>
-                  <p className="text-xs text-muted mb-1.5">{section.helper}</p>
+                  <p className="mb-1.5 text-xs text-slate-500">{section.helper}</p>
                   <textarea
                     value={guidedSections[section.key]}
                     onChange={(e) => updateSection(section.key, e.target.value)}
                     rows={section.rows || 3}
                     placeholder={section.placeholder}
-                    className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text-primary placeholder:text-muted focus:outline-none focus:border-primary/60 transition-colors resize-y"
+                    className="w-full resize-y rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder:text-slate-400 transition-colors focus:border-slate-400 focus:outline-none"
                   />
                 </div>
               ))}
@@ -303,75 +298,75 @@ export default function BotConfigForm({
               value={advancedPrompt}
               onChange={(e) => setAdvancedPrompt(e.target.value)}
               rows={8}
-              placeholder="System prompt-оо энд шууд засна уу..."
-              className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text-primary placeholder:text-muted focus:outline-none focus:border-primary/60 transition-colors resize-none"
+              placeholder="Write the system prompt here..."
+              className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder:text-slate-400 transition-colors focus:border-slate-400 focus:outline-none"
             />
           )}
 
-          <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-            <div className="bg-surface-2 border border-border rounded-lg px-3 py-2 text-text-secondary">
-              Тэмдэгт:{" "}
-              <span className={`font-semibold ${promptLength > 2000 ? "text-danger" : "text-text-primary"}`}>
+          <div className="mt-2 grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600">
+              Characters:{" "}
+              <span className={`font-semibold ${promptLength > 2000 ? "text-red-600" : "text-slate-900"}`}>
                 {promptLength}/2000
               </span>
             </div>
-            <div className="bg-surface-2 border border-border rounded-lg px-3 py-2 text-text-secondary">
-              Ойролцоо токен: <span className="font-semibold text-text-primary">~{approxTokens}</span>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600">
+              Approx tokens: <span className="font-semibold text-slate-900">~{approxTokens}</span>
             </div>
-            <div className="bg-surface-2 border border-border rounded-lg px-3 py-2 text-text-secondary">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600">
               Prompt health: <span className={`font-semibold ${HEALTH_META[health.level].color}`}>{HEALTH_META[health.level].label}</span>
             </div>
           </div>
           {approxTokens > 1200 ? (
-            <p className="mt-2 text-xs text-warning">
-              Анхаар: prompt хэт урт байна (~{approxTokens} token). Хэт урт prompt нь хариултыг удаашруулж, чанарт нөлөөлж болно.
+            <p className="mt-2 text-xs text-amber-600">
+              Heads up: the prompt is getting long. Shorter prompts usually perform better.
             </p>
           ) : null}
           {health.warnings.length > 0 && (
-            <div className="mt-2 bg-warning/10 border border-warning/30 rounded-lg px-3 py-2 text-xs text-warning space-y-1">
+            <div className="mt-2 space-y-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
               {health.warnings.slice(0, 3).map((warning) => (
-                <p key={warning}>• {warning}</p>
+                <p key={warning}>- {warning}</p>
               ))}
             </div>
           )}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-text-primary mb-2">
-            Тавтай морил мессеж <span className="text-muted text-xs">(заавал биш)</span>
+          <label className="mb-2 block text-sm font-medium text-slate-900">
+            Welcome message <span className="text-xs text-slate-500">(optional)</span>
           </label>
           <input
             type="text"
             value={welcomeMessage}
             onChange={(e) => setWelcomeMessage(e.target.value)}
-            placeholder="Сайн байна уу! Би танд яаж туслах вэ?"
-            className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-text-primary placeholder:text-muted focus:outline-none focus:border-primary/60 transition-colors"
+            placeholder="Hi! How can I help today?"
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder:text-slate-400 transition-colors focus:border-slate-400 focus:outline-none"
           />
         </div>
       </div>
 
-      <div className="bg-surface-2 border border-border rounded-xl p-4">
-        <p className="text-sm font-medium text-text-primary mb-3">Bot туршиж үзэх</p>
+      <div className="rounded-[28px] border border-slate-200 bg-slate-50 p-4">
+        <p className="mb-3 text-sm font-medium text-slate-900">Test the bot</p>
         <div className="flex gap-2">
           <input
             type="text"
             value={testMessage}
             onChange={(e) => setTestMessage(e.target.value)}
-            placeholder="Тест мессеж бичнэ үү..."
-            className="flex-1 bg-background border border-border rounded-xl px-4 py-2.5 text-text-primary placeholder:text-muted text-sm focus:outline-none focus:border-primary/60 transition-colors"
+            placeholder="Type a test message..."
+            className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 transition-colors focus:border-slate-400 focus:outline-none"
             onKeyDown={(e) => e.key === "Enter" && handleTest()}
           />
           <button
             onClick={handleTest}
             disabled={!testMessage.trim() || testing}
-            className="bg-primary/20 hover:bg-primary/30 disabled:opacity-50 text-primary px-4 py-2.5 rounded-xl text-sm font-medium transition-colors"
+            className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-slate-800 disabled:opacity-50"
           >
-            {testing ? "..." : "Турш"}
+            {testing ? "..." : "Test"}
           </button>
         </div>
         {testReply && (
-          <div className="mt-3 bg-background border border-border rounded-xl p-3 text-sm text-text-primary">
-            <span className="text-xs text-primary font-medium block mb-1">{botName}:</span>
+          <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-900">
+            <span className="mb-1 block text-xs font-medium text-slate-500">{botName}:</span>
             {testReply}
           </div>
         )}
@@ -381,28 +376,28 @@ export default function BotConfigForm({
         {onBack ? (
           <button
             onClick={onBack}
-            className="flex-1 border border-border hover:border-primary/40 text-text-secondary hover:text-text-primary font-semibold px-6 py-3 rounded-xl transition-colors"
+            className="flex-1 rounded-xl border border-slate-200 px-6 py-3 font-semibold text-slate-600 transition-colors hover:border-slate-400 hover:text-slate-900"
           >
-            Буцах
+            Back
           </button>
         ) : null}
         <button
           onClick={handleSave}
           disabled={saving || !canSave}
-          className="flex-1 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white font-semibold px-6 py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
+          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 font-semibold text-white transition-colors hover:bg-slate-800 disabled:opacity-50"
         >
           {saving ? (
             <>
-              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-              Хадгалж байна...
+              Saving...
             </>
           ) : (
             <>
               {submitLabel}
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </>

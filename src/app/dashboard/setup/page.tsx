@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function SetupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ step?: string; fb_connected?: string; businessId?: string; error?: string }>;
+  searchParams: Promise<{ step?: string; fb_connected?: string; businessId?: string; error?: string; plan?: string }>;
 }) {
   const params = await searchParams;
 
@@ -46,6 +46,7 @@ export default async function SetupPage({
       fbConnected={params.fb_connected === "1"}
       urlBusinessId={params.businessId}
       fbError={params.error}
+      initialMonthlyTier={params.plan}
     />
   );
 }

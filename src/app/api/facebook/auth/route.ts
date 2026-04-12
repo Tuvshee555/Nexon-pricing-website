@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
+import { getAppUrl } from "@/lib/app-url";
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
@@ -9,7 +10,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const businessId = searchParams.get("businessId") || "";
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const appUrl = getAppUrl(request);
   const redirectUri = `${appUrl}/api/facebook/callback`;
 
   const nonce = crypto.randomUUID();

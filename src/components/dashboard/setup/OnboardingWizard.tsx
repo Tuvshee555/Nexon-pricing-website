@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Step1Business from "./steps/Step1Business";
@@ -26,37 +26,41 @@ interface Props {
   fbConnected?: boolean;
   urlBusinessId?: string;
   fbError?: string;
+  initialMonthlyTier?: string;
 }
 
 const STEPS = [
   {
-    title: "Бизнесийнхээ мэдээллийг оруулна уу",
-    desc: "Bot тань таны брэндийг төлөөлж, хэрэглэгчидтэй таны өнгөнөөр харилцана.",
+    title: "Tell us about the business",
+    desc: "We use this to shape the bot voice, prompt, and default setup.",
     illustration: (
-      <div className="w-32 h-32 rounded-3xl bg-white/20 flex items-center justify-center mx-auto mb-6">
-        <svg className="w-16 h-16 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="mx-auto mb-6 flex h-32 w-32 items-center justify-center rounded-3xl bg-white/20">
+        <svg className="h-16 w-16 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
         </svg>
       </div>
     ),
   },
   {
-    title: "Facebook хуудас холбох",
-    desc: "Мессенжер автоматжуулалт үүсгэхийн тулд Facebook бизнес хуудсаа холбоно уу.",
+    title: "Connect Facebook",
+    desc: "This unlocks Messenger automation and lets us load your pages.",
     illustration: (
-      <div className="w-32 h-32 rounded-full bg-[#1877F2]/30 flex items-center justify-center mx-auto mb-6">
-        <svg className="w-16 h-16 text-white" viewBox="0 0 24 24" fill="currentColor">
+      <div className="mx-auto mb-6 flex h-32 w-32 items-center justify-center rounded-full bg-[#1877F2]/30">
+        <svg className="h-16 w-16 text-white" viewBox="0 0 24 24" fill="currentColor">
           <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
         </svg>
       </div>
     ),
   },
   {
-    title: "Instagram холбох",
-    desc: "Instagram Direct мессежийг автоматаар хариулах боломжтой болно.",
+    title: "Connect Instagram",
+    desc: "Let Instagram DMs flow into the same experience as Messenger.",
     illustration: (
-      <div className="w-32 h-32 rounded-3xl flex items-center justify-center mx-auto mb-6" style={{ background: "linear-gradient(135deg, #F9CE34, #EE2A7B, #6228D7)" }}>
-        <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div
+        className="mx-auto mb-6 flex h-32 w-32 items-center justify-center rounded-3xl"
+        style={{ background: "linear-gradient(135deg, #F9CE34, #EE2A7B, #6228D7)" }}
+      >
+        <svg className="h-16 w-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <rect x="2" y="2" width="20" height="20" rx="6" strokeWidth="1.5" />
           <circle cx="12" cy="12" r="5" strokeWidth="1.5" />
           <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
@@ -65,22 +69,22 @@ const STEPS = [
     ),
   },
   {
-    title: "Bot тохируулах",
-    desc: "Bot тань хэрхэн ярих вэ? Хариултын өнгө, тохиргоог тодорхойлно уу.",
+    title: "Tune the bot",
+    desc: "Set the tone, welcome message, and prompt structure before launch.",
     illustration: (
-      <div className="w-32 h-32 rounded-3xl bg-white/20 flex items-center justify-center mx-auto mb-6">
-        <svg className="w-16 h-16 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="mx-auto mb-6 flex h-32 w-32 items-center justify-center rounded-3xl bg-white/20">
+        <svg className="h-16 w-16 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
         </svg>
       </div>
     ),
   },
   {
-    title: "Төлөвлөгөө сонгоно уу",
-    desc: "Танд хамгийн тохиромжтой сонголтыг хийгээд, бүрэн идэвхжүүлнэ үү.",
+    title: "Pick a plan",
+    desc: "Choose the tier that matches your volume and team size.",
     illustration: (
-      <div className="w-32 h-32 rounded-3xl bg-white/20 flex items-center justify-center mx-auto mb-6">
-        <svg className="w-16 h-16 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="mx-auto mb-6 flex h-32 w-32 items-center justify-center rounded-3xl bg-white/20">
+        <svg className="h-16 w-16 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
         </svg>
       </div>
@@ -94,6 +98,7 @@ export default function OnboardingWizard({
   fbConnected,
   urlBusinessId,
   fbError,
+  initialMonthlyTier,
 }: Props) {
   const router = useRouter();
 
@@ -122,83 +127,82 @@ export default function OnboardingWizard({
 
   return (
     <div className="min-h-screen flex">
-      {/* Left panel */}
-      <div className="hidden lg:flex lg:w-[42%] flex-col bg-gradient-to-br from-[#0F4FE8] to-[#4F46E5] p-10 relative overflow-hidden">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 relative z-10">
-          <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
-            <span className="text-white font-black text-sm">N</span>
+      <div className="relative hidden overflow-hidden bg-gradient-to-br from-[#0F4FE8] to-[#4F46E5] p-10 lg:flex lg:w-[42%] flex-col">
+        <Link href="/" className="relative z-10 flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/20 backdrop-blur-sm">
+            <span className="text-sm font-black text-white">N</span>
           </div>
-          <span className="text-lg font-black text-white tracking-tight">Nexon</span>
+          <span className="text-lg font-black tracking-tight text-white">Nexon</span>
         </Link>
 
-        {/* Illustration + text */}
-        <div className="flex-1 flex flex-col items-center justify-center text-center relative z-10">
+        <div className="relative z-10 flex flex-1 flex-col items-center justify-center text-center">
           {current.illustration}
-          <h2 className="text-2xl font-black text-white leading-tight mb-3">
-            {current.title}
-          </h2>
-          <p className="text-white/65 text-sm leading-relaxed max-w-xs">
-            {current.desc}
-          </p>
+          <h2 className="mb-3 text-2xl font-black leading-tight text-white">{current.title}</h2>
+          <p className="max-w-xs text-sm leading-relaxed text-white/65">{current.desc}</p>
         </div>
 
-        {/* Back */}
         <div className="relative z-10">
           {step > 1 ? (
             <button
               onClick={handleBack}
-              className="flex items-center gap-2 text-white/60 hover:text-white text-sm transition-colors"
+              className="flex items-center gap-2 text-sm text-white/60 transition-colors hover:text-white"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
-              Буцах
+              Back
             </button>
           ) : (
-            <p className="text-white/30 text-xs">
-              Алхам {step} / {STEPS.length}
+            <p className="text-xs text-white/30">
+              Step {step} / {STEPS.length}
             </p>
           )}
         </div>
 
-        {/* Background decoration */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+        <div className="absolute right-0 top-0 h-64 w-64 -translate-y-1/2 translate-x-1/2 rounded-full bg-white/5" />
+        <div className="absolute bottom-0 left-0 h-48 w-48 translate-y-1/2 -translate-x-1/2 rounded-full bg-white/5" />
       </div>
 
-      {/* Right panel */}
-      <div className="flex-1 flex flex-col overflow-y-auto bg-white">
-        {/* Mobile header */}
-        <div className="lg:hidden flex items-center justify-between p-5 border-b border-gray-100">
+      <div className="flex flex-1 flex-col overflow-y-auto bg-white">
+        <div className="flex items-center justify-between border-b border-gray-100 p-5 lg:hidden">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-white font-black text-xs">N</span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-900">
+              <span className="text-xs font-black text-white">N</span>
             </div>
             <span className="font-black text-gray-900">Nexon</span>
           </Link>
-          <span className="text-xs text-gray-400">{step} / {STEPS.length}</span>
+          <span className="text-xs text-gray-400">
+            {step} / {STEPS.length}
+          </span>
         </div>
 
-        {/* Step progress dots */}
-        <div className="flex gap-1.5 px-8 lg:px-12 pt-8">
+        <div className="flex gap-1.5 px-8 pt-8 lg:px-12">
           {STEPS.map((_, i) => (
             <div
               key={i}
               className={`h-1 rounded-full transition-all ${
-                i + 1 === step ? "w-8 bg-primary" : i + 1 < step ? "w-4 bg-primary/40" : "w-4 bg-gray-200"
+                i + 1 === step ? "w-8 bg-slate-900" : i + 1 < step ? "w-4 bg-slate-400" : "w-4 bg-gray-200"
               }`}
             />
           ))}
         </div>
 
-        {/* Content */}
-        <div className="flex-1 px-8 lg:px-16 py-8 max-w-2xl w-full mx-auto">
+        <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-8 py-8 lg:px-16">
+          <div className="mb-8 rounded-[28px] border border-slate-200 bg-slate-50 p-5">
+            <p className="section-label">Setup guide</p>
+            <p className="mt-3 text-sm leading-7 text-slate-600">
+              We&apos;ll connect the right channels, tune the bot voice, and finish with a plan that matches your volume.
+            </p>
+          </div>
+
           {step === 1 && (
             <Step1Business
               initialName={business?.name}
               initialType={business?.business_type}
-              onNext={(bizId) => { setBusinessId(bizId); setStep(2); }}
+              onNext={(bizId) => {
+                setBusinessId(bizId);
+                setStep(2);
+              }}
             />
           )}
           {step === 2 && (
@@ -206,7 +210,11 @@ export default function OnboardingWizard({
               businessId={businessId}
               fbConnected={!!fbConnected}
               fbError={fbError}
-              onNext={(pName, pId) => { setPageName(pName); setPageId(pId); setStep(3); }}
+              onNext={(pName, pId) => {
+                setPageName(pName);
+                setPageId(pId);
+                setStep(3);
+              }}
               onSkip={() => setStep(4)}
             />
           )}
@@ -214,7 +222,10 @@ export default function OnboardingWizard({
             <Step3Instagram
               businessId={businessId}
               pageId={pageId}
-              onNext={(igConnected) => { setInstagramConnected(igConnected); setStep(4); }}
+              onNext={(igConnected) => {
+                setInstagramConnected(igConnected);
+                setStep(4);
+              }}
               onSkip={() => setStep(4)}
             />
           )}
@@ -234,6 +245,7 @@ export default function OnboardingWizard({
               businessId={businessId}
               pageName={pageName}
               instagramConnected={instagramConnected}
+              initialMonthlyTier={initialMonthlyTier}
               onComplete={() => router.push("/dashboard?welcome=1")}
               onBack={() => setStep(4)}
             />

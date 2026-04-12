@@ -1,16 +1,26 @@
 import type { Metadata } from "next";
-import "./globals.css";
-import { LanguageProvider } from "@/contexts/LanguageContext";
+import localFont from "next/font/local";
 import { Toaster } from "sonner";
-import { Inter } from "next/font/google";
 import { cn } from "@/lib/utils";
+import { LanguageProvider } from "@/contexts/LanguageContext";
+import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
+const geistSans = localFont({
+  src: "./fonts/GeistVF.woff",
+  variable: "--font-sans",
+  display: "swap",
+});
+
+const geistMono = localFont({
+  src: "./fonts/GeistMonoVF.woff",
+  variable: "--font-mono",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
-  title: "Nexon — Бизнесийн AI Чатбот",
+  title: "Nexon | AI conversations for Mongolian businesses",
   description:
-    "Instagram болон Facebook Messenger-т ажилладаг AI чатбот. Монгол бизнесүүдэд зориулсан.",
+    "AI-powered Instagram and Messenger automation for Mongolian businesses, with guided onboarding, live inbox visibility, and conversion-focused workflows.",
   keywords: ["AI chatbot", "Mongolia", "Instagram", "Messenger", "Nexon"],
 };
 
@@ -20,8 +30,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="mn" className={cn("font-sans", inter.variable)}>
-      <body className="antialiased bg-background text-text-primary">
+    <html lang="en" suppressHydrationWarning className={cn("font-sans", geistSans.variable, geistMono.variable)}>
+      <body className="min-h-screen bg-background text-text-primary antialiased">
         <LanguageProvider>
           {children}
           <Toaster

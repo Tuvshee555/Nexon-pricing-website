@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
+import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { motion, AnimatePresence } from "framer-motion";
 
 export default function Navbar() {
   const { lang, setLang, t } = useLanguage();
@@ -11,10 +11,18 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    const handler = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", handler);
-    return () => window.removeEventListener("scroll", handler);
+    const onScroll = () => setScrolled(window.scrollY > 18);
+    onScroll();
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  const navItems = [
+    { label: t("nav_features"), id: "features" },
+    { label: t("nav_pricing"), id: "pricing" },
+    { label: t("nav_howItWorks"), id: "how-it-works" },
+    { label: t("nav_contact"), id: "contact" },
+  ];
 
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
@@ -22,137 +30,106 @@ export default function Navbar() {
   };
 
   return (
-    <motion.nav
-      initial={{ y: -80, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.7, ease: "easeOut" }}
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-        scrolled
-          ? "glass-strong border-b border-primary/10 shadow-lg shadow-primary/5"
-          : "bg-transparent"
-      }`}
-    >
-      {/* Top glow line when scrolled */}
-      {scrolled && (
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
-      )}
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <motion.div
-              whileHover={{ scale: 1.1, rotate: 5 }}
-              transition={{ type: "spring", stiffness: 400 }}
-              className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center glow-primary"
-            >
-              <span className="text-white font-black text-sm">N</span>
-            </motion.div>
-            <span className="text-xl font-black text-gradient-animated">NEXON</span>
+    <header className="fixed inset-x-0 top-0 z-50 px-4 pt-4 sm:px-6 lg:px-8">
+      <motion.nav
+        initial={{ y: -18, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className={`mx-auto max-w-7xl rounded-[24px] border transition-all duration-300 ${
+          scrolled
+            ? "border-slate-200/80 bg-white/88 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur-xl"
+            : "border-white/60 bg-white/72 backdrop-blur-lg"
+        }`}
+      >
+        <div className="flex h-16 items-center justify-between px-5 sm:px-6">
+          <Link href="/" className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-sm font-black text-white">
+              N
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Nexon</p>
+              <p className="text-sm font-semibold text-slate-900">AI messaging platform</p>
+            </div>
           </Link>
 
-          {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-8">
-            {[
-              { label: t("nav_features"), id: "features" },
-              { label: t("nav_pricing"), id: "pricing" },
-              { label: t("nav_howItWorks"), id: "how-it-works" },
-              { label: t("nav_contact"), id: "contact" },
-            ].map((item) => (
+          <div className="hidden items-center gap-2 lg:flex">
+            {navItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => scrollTo(item.id)}
-                className="relative text-text-secondary hover:text-text-primary text-sm font-medium transition-colors group"
+                className="rounded-full px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
               >
                 {item.label}
-                <span className="absolute -bottom-0.5 left-0 w-0 h-px bg-gradient-to-r from-primary to-accent transition-all duration-300 group-hover:w-full" />
               </button>
             ))}
           </div>
 
-          {/* Right side */}
-          <div className="flex items-center gap-3">
-            {/* Language Toggle */}
-            <motion.button
-              whileTap={{ scale: 0.95 }}
+          <div className="hidden items-center gap-3 lg:flex">
+            <button
               onClick={() => setLang(lang === "mn" ? "en" : "mn")}
-              className="text-xs font-semibold px-3 py-1.5 rounded-full border border-border hover:border-primary/50 text-text-secondary hover:text-text-primary transition-all duration-200"
+              className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition-colors hover:border-slate-300 hover:text-slate-900"
             >
-              {lang === "mn" ? "EN" : "МН"}
-            </motion.button>
-
-            <Link
-              href="/login"
-              className="hidden sm:block text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
-            >
+              {lang === "mn" ? "EN" : "MN"}
+            </button>
+            <Link href="/login" className="rounded-full px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100">
               {t("nav_login")}
             </Link>
-
-            <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
-              <Link
-                href="/register"
-                className="btn-shimmer bg-primary hover:bg-primary/90 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors glow-primary"
-              >
-                {t("nav_register")}
-              </Link>
-            </motion.div>
-
-            {/* Mobile menu button */}
-            <button
-              className="md:hidden p-2 text-text-secondary"
-              onClick={() => setMenuOpen(!menuOpen)}
+            <Link
+              href="/register"
+              className="rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <AnimatePresence mode="wait">
-                  {menuOpen ? (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  ) : (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  )}
-                </AnimatePresence>
-              </svg>
-            </button>
+              {t("nav_register")}
+            </Link>
           </div>
+
+          <button
+            className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 lg:hidden"
+            onClick={() => setMenuOpen((open) => !open)}
+            aria-label="Toggle menu"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={menuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
+            </svg>
+          </button>
         </div>
 
-        {/* Mobile menu */}
         <AnimatePresence>
           {menuOpen && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="md:hidden glass-strong border-t border-border/50 overflow-hidden"
+              className="overflow-hidden border-t border-slate-200 lg:hidden"
             >
-              <div className="py-4 space-y-2">
-                {[
-                  { label: t("nav_features"), id: "features" },
-                  { label: t("nav_pricing"), id: "pricing" },
-                  { label: t("nav_howItWorks"), id: "how-it-works" },
-                  { label: t("nav_contact"), id: "contact" },
-                ].map((item, i) => (
-                  <motion.button
+              <div className="space-y-2 px-5 py-4">
+                {navItems.map((item) => (
+                  <button
                     key={item.id}
-                    initial={{ opacity: 0, x: -16 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.06, duration: 0.3 }}
                     onClick={() => scrollTo(item.id)}
-                    className="block w-full text-left px-4 py-2 text-text-secondary hover:text-text-primary text-sm font-medium transition-colors"
+                    className="block w-full rounded-2xl px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100"
                   >
                     {item.label}
-                  </motion.button>
+                  </button>
                 ))}
-                <div className="px-4 pt-2">
-                  <Link href="/login" className="block text-sm text-text-secondary py-2">
+
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    onClick={() => setLang(lang === "mn" ? "en" : "mn")}
+                    className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600"
+                  >
+                    {lang === "mn" ? "EN" : "MN"}
+                  </button>
+                  <Link href="/login" className="text-sm font-semibold text-slate-700">
                     {t("nav_login")}
+                  </Link>
+                  <Link href="/register" className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
+                    {t("nav_register")}
                   </Link>
                 </div>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
-    </motion.nav>
+      </motion.nav>
+    </header>
   );
 }

@@ -2,6 +2,7 @@ import { randomBytes } from "crypto";
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { sendEmail } from "@/lib/mailer";
+import { getAppUrl } from "@/lib/app-url";
 
 export async function POST(request: Request) {
   try {
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
       WHERE email = ${normalizedEmail}
     `;
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const appUrl = getAppUrl(request);
     const resetUrl = `${appUrl}/reset-password?token=${token}`;
 
     const subject = "Nexon: Нууц үг сэргээх холбоос";

@@ -3,8 +3,9 @@ import { headers } from "next/headers";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
 import { sql } from "@/lib/db";
-import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import { needsOnboarding } from "@/lib/onboarding";
+import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
+import DashboardTopbar from "@/components/dashboard/DashboardTopbar";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,6 @@ export default async function DashboardLayout({
 
   if (role === "admin") redirect("/admin");
 
-  // Check onboarding status
   const businesses = await sql`
     SELECT id, onboarding_done, status, platforms, bot_prompt
     FROM businesses WHERE user_id = ${userId}
@@ -35,7 +35,6 @@ export default async function DashboardLayout({
       `
     : [];
 
-  // Get current path to avoid redirect loop on /dashboard/setup
   const headersList = await headers();
   const pathname = headersList.get("x-pathname") || "";
   const isSetupPath = pathname.includes("/dashboard/setup");
@@ -45,9 +44,13 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen dashboard-shell">
       <DashboardSidebar user={{ email: session.user.email, name: session.user.name }} role={role} />
-      <main className="flex-1 lg:ml-60 p-6 pt-6">{children}</main>
+
+      <div className="min-h-screen lg:pl-72">
+        <DashboardTopbar />
+        <main className="px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+      </div>
     </div>
   );
 }

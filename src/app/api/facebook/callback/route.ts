@@ -6,10 +6,11 @@ import {
   exchangeForLongLivedToken,
   getUserPages,
 } from "@/lib/facebook";
+import { getAppUrl } from "@/lib/app-url";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const appUrl = getAppUrl(request);
 
   const code = searchParams.get("code");
   const stateParam = searchParams.get("state");

@@ -10,14 +10,14 @@ interface Props {
 }
 
 const BUSINESS_TYPES = [
-  { value: "restaurant", label: "Ресторан / Хоол", icon: "🍽️" },
-  { value: "ecommerce", label: "Дэлгүүр / E-commerce", icon: "🛍️" },
-  { value: "service", label: "Мэргэжлийн үйлчилгээ", icon: "💼" },
-  { value: "healthcare", label: "Эрүүл мэнд", icon: "🏥" },
-  { value: "real_estate", label: "Үл хөдлөх хөрөнгө", icon: "🏠" },
-  { value: "education", label: "Боловсрол", icon: "🎓" },
-  { value: "beauty", label: "Гоо сайхан / Салон", icon: "💅" },
-  { value: "other", label: "Бусад", icon: "⚡" },
+  { value: "restaurant", label: "Restaurant / Food", icon: "RS" },
+  { value: "ecommerce", label: "Ecommerce / Retail", icon: "EC" },
+  { value: "service", label: "Service business", icon: "SV" },
+  { value: "healthcare", label: "Healthcare", icon: "HC" },
+  { value: "real_estate", label: "Real estate", icon: "RE" },
+  { value: "education", label: "Education", icon: "ED" },
+  { value: "beauty", label: "Beauty / Salon", icon: "BE" },
+  { value: "other", label: "Other", icon: "OT" },
 ];
 
 export default function Step1Business({ initialName, initialType, onNext }: Props) {
@@ -26,7 +26,10 @@ export default function Step1Business({ initialName, initialType, onNext }: Prop
   const [loading, setLoading] = useState(false);
 
   const handleNext = async () => {
-    if (!name.trim()) { toast.error("Бизнесийн нэр оруулна уу"); return; }
+    if (!name.trim()) {
+      toast.error("Please enter your business name");
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/business/create", {
@@ -35,10 +38,13 @@ export default function Step1Business({ initialName, initialType, onNext }: Prop
         body: JSON.stringify({ businessName: name.trim(), businessType: type || "other" }),
       });
       const data = await res.json();
-      if (!res.ok) { toast.error(data.error || "Алдаа гарлаа"); return; }
+      if (!res.ok) {
+        toast.error(data.error || "Something went wrong");
+        return;
+      }
       onNext(data.businessId);
     } catch {
-      toast.error("Холболтын алдаа гарлаа");
+      toast.error("Connection error");
     } finally {
       setLoading(false);
     }
@@ -47,48 +53,48 @@ export default function Step1Business({ initialName, initialType, onNext }: Prop
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-black text-gray-900 mb-1">Бизнесийнхээ мэдээлэл</h1>
-        <p className="text-gray-500 text-sm">Bot тань энэ мэдээллийг ашиглан хэрэглэгчидтэй зөв харилцана.</p>
+        <h1 className="mb-1 text-2xl font-black text-gray-900">Tell us about the business</h1>
+        <p className="text-sm text-gray-500">We&apos;ll use this to shape the bot voice and your default setup.</p>
       </div>
 
-      {/* Business name */}
       <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2">
-          Бизнесийн нэр <span className="text-red-400">*</span>
+        <label className="mb-2 block text-sm font-semibold text-gray-700">
+          Business name <span className="text-red-400">*</span>
         </label>
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Жишээ: Nexon Coffee Shop"
-          className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all text-sm"
+          placeholder="Example: Nexon Coffee Shop"
+          className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
           onKeyDown={(e) => e.key === "Enter" && handleNext()}
         />
       </div>
 
-      {/* Business type */}
       <div>
-        <p className="text-sm font-semibold text-gray-700 mb-3">Бизнесийн ангилал</p>
+        <p className="mb-3 text-sm font-semibold text-gray-700">Business type</p>
         <div className="space-y-2">
           {BUSINESS_TYPES.map((bt) => (
             <button
               key={bt.value}
               type="button"
               onClick={() => setType(bt.value)}
-              className={`w-full flex items-center gap-4 p-4 rounded-xl border text-left transition-all ${
-                type === bt.value
-                  ? "border-primary bg-primary/5"
-                  : "border-gray-200 bg-white hover:border-gray-300"
+              className={`flex w-full items-center gap-4 rounded-xl border p-4 text-left transition-all ${
+                type === bt.value ? "border-slate-900 bg-slate-50" : "border-gray-200 bg-white hover:border-gray-300"
               }`}
             >
-              <span className="text-xl">{bt.icon}</span>
-              <span className={`text-sm font-medium ${type === bt.value ? "text-primary" : "text-gray-700"}`}>
+              <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-slate-100 text-xs font-black tracking-[0.18em] text-slate-700">
+                {bt.icon}
+              </span>
+              <span className={`text-sm font-medium ${type === bt.value ? "text-slate-900" : "text-gray-700"}`}>
                 {bt.label}
               </span>
-              <div className={`ml-auto w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                type === bt.value ? "border-primary" : "border-gray-300"
-              }`}>
-                {type === bt.value && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
+              <div
+                className={`ml-auto flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 ${
+                  type === bt.value ? "border-slate-900" : "border-gray-300"
+                }`}
+              >
+                {type === bt.value && <div className="h-2.5 w-2.5 rounded-full bg-slate-900" />}
               </div>
             </button>
           ))}
@@ -98,11 +104,11 @@ export default function Step1Business({ initialName, initialType, onNext }: Prop
       <button
         onClick={handleNext}
         disabled={loading || !name.trim()}
-        className="w-full bg-primary hover:bg-primary/90 disabled:opacity-40 text-white font-semibold px-6 py-3.5 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm shadow-sm"
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 disabled:opacity-40"
       >
-        {loading ? "Үүсгэж байна..." : "Дараагийн алхам"}
+        {loading ? "Creating..." : "Continue"}
         {!loading && (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         )}

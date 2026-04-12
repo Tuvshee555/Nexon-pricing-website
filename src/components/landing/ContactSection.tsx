@@ -19,6 +19,7 @@ import {
   validateContactField,
   validateContactPayload,
 } from "@/lib/contact";
+import { trackEvent } from "@/lib/analytics";
 
 type SubmitErrorCode = ContactErrorCode | "NETWORK_ERROR";
 
@@ -210,6 +211,7 @@ export default function ContactSection() {
 
     setFieldErrors({});
     setStatus("sending");
+    trackEvent("contact_submit_started", { source: "landing_contact" });
 
     try {
       const res = await fetch("/api/contact", {
@@ -222,6 +224,7 @@ export default function ContactSection() {
 
       if (!res.ok || !data?.success) {
         const errorCode = data?.errorCode || "SEND_FAILED";
+        trackEvent("contact_submit_failed", { source: "landing_contact", errorCode });
         const field = CONTACT_ERROR_TO_FIELD[errorCode];
 
         if (field) {
@@ -239,7 +242,9 @@ export default function ContactSection() {
       setSubmitError(null);
       setCooldownRemaining(CONTACT_COOLDOWN_SECONDS);
       setStatus("success");
+      trackEvent("contact_submit_succeeded", { source: "landing_contact" });
     } catch {
+      trackEvent("contact_submit_failed", { source: "landing_contact", errorCode: "NETWORK_ERROR" });
       setSubmitError("NETWORK_ERROR");
       setStatus("idle");
     }
@@ -255,9 +260,9 @@ export default function ContactSection() {
     <section
       id="contact"
       ref={ref}
-      className="relative py-24 px-4 sm:px-6 lg:px-8 overflow-hidden"
+      className="relative px-4 py-20 sm:px-6 lg:px-8 overflow-hidden"
     >
-      <div className="absolute inset-0 bg-surface/50" />
+      <div className="absolute inset-0 bg-transparent" />
       <div
         className="pointer-events-none absolute left-1/2 bottom-0 h-[30rem] w-[60rem] -translate-x-1/2 rounded-full opacity-10"
         style={{
@@ -274,11 +279,11 @@ export default function ContactSection() {
           transition={{ duration: 0.7 }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl sm:text-5xl font-black text-text-primary mb-4">
+          <div className="section-label justify-center">{t("contact_title")}</div>
+          <h2 className="mt-5 text-4xl sm:text-5xl font-black tracking-[-0.03em] text-slate-950 mb-4">
             {t("contact_title")}
           </h2>
-          <p className="text-text-secondary text-lg">{t("contact_subtitle")}</p>
-          <div className="mt-6 mx-auto h-px w-24 bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+          <p className="text-slate-600 text-lg">{t("contact_subtitle")}</p>
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
@@ -288,9 +293,8 @@ export default function ContactSection() {
             transition={{ duration: 0.7, delay: 0.15 }}
             className="space-y-4"
           >
-            <div className="relative overflow-hidden rounded-2xl border border-border bg-surface/80 p-6 backdrop-blur-sm">
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-              <h3 className="text-lg font-bold text-text-primary mb-5">
+            <div className="surface-panel relative overflow-hidden rounded-[30px] p-6">
+              <h3 className="text-lg font-bold text-slate-900 mb-5">
                 {t("contact_info_title")}
               </h3>
               <div className="space-y-3">
@@ -308,15 +312,15 @@ export default function ContactSection() {
                     animate={isInView ? { opacity: 1, x: 0 } : {}}
                     transition={{ duration: 0.5, delay: 0.3 + i * 0.08 }}
                     whileHover={{ x: 4 }}
-                    className="flex items-center gap-4 text-text-secondary hover:text-text-primary transition-colors group"
+                    className="flex items-center gap-4 text-slate-600 hover:text-slate-900 transition-colors group"
                   >
                     <div
-                      className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-colors ${link.bg}`}
+                      className={`w-10 h-10 rounded-2xl border flex items-center justify-center transition-colors ${link.bg}`}
                     >
                       {link.icon}
                     </div>
                     <div>
-                      <p className="text-xs text-muted">{link.label}</p>
+                      <p className="text-xs text-slate-400">{link.label}</p>
                       <p className="font-medium">{link.value}</p>
                     </div>
                   </motion.a>
@@ -329,10 +333,8 @@ export default function ContactSection() {
             initial={{ opacity: 0, x: 30 }}
             animate={isInView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.7, delay: 0.25 }}
-            className="relative overflow-hidden rounded-2xl border border-border bg-surface/80 p-6 backdrop-blur-sm"
+            className="surface-card relative overflow-hidden rounded-[30px] p-6"
           >
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/30 to-transparent" />
-
             <AnimatePresence mode="wait">
               {status === "success" ? (
                 <motion.div
@@ -413,8 +415,8 @@ export default function ContactSection() {
                         autoComplete="name"
                         aria-invalid={Boolean(fieldErrors.name)}
                         aria-describedby={fieldErrors.name ? "contact-name-error" : undefined}
-                        className={`w-full bg-surface-2 border rounded-lg px-4 py-2.5 text-text-primary placeholder-muted focus:outline-none focus:shadow-[0_0_0_3px_rgba(15,79,232,0.15)] transition-all text-sm ${
-                          fieldErrors.name ? "border-danger/50" : "border-border focus:border-primary"
+                        className={`w-full rounded-2xl border bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:shadow-[0_0_0_3px_rgba(15,23,42,0.08)] transition-all text-sm ${
+                          fieldErrors.name ? "border-danger/50" : "border-slate-200 focus:border-slate-400"
                         }`}
                         placeholder={t("contact_placeholder_name")}
                       />
@@ -437,8 +439,8 @@ export default function ContactSection() {
                         inputMode="tel"
                         aria-invalid={Boolean(fieldErrors.phone)}
                         aria-describedby={fieldErrors.phone ? "contact-phone-error" : undefined}
-                        className={`w-full bg-surface-2 border rounded-lg px-4 py-2.5 text-text-primary placeholder-muted focus:outline-none focus:shadow-[0_0_0_3px_rgba(15,79,232,0.15)] transition-all text-sm ${
-                          fieldErrors.phone ? "border-danger/50" : "border-border focus:border-primary"
+                        className={`w-full rounded-2xl border bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:shadow-[0_0_0_3px_rgba(15,23,42,0.08)] transition-all text-sm ${
+                          fieldErrors.phone ? "border-danger/50" : "border-slate-200 focus:border-slate-400"
                         }`}
                         placeholder={t("contact_placeholder_phone")}
                       />
@@ -462,8 +464,8 @@ export default function ContactSection() {
                       autoComplete="email"
                       aria-invalid={Boolean(fieldErrors.email)}
                       aria-describedby={fieldErrors.email ? "contact-email-error" : undefined}
-                      className={`w-full bg-surface-2 border rounded-lg px-4 py-2.5 text-text-primary placeholder-muted focus:outline-none focus:shadow-[0_0_0_3px_rgba(15,79,232,0.15)] transition-all text-sm ${
-                        fieldErrors.email ? "border-danger/50" : "border-border focus:border-primary"
+                      className={`w-full rounded-2xl border bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:shadow-[0_0_0_3px_rgba(15,23,42,0.08)] transition-all text-sm ${
+                        fieldErrors.email ? "border-danger/50" : "border-slate-200 focus:border-slate-400"
                       }`}
                       placeholder={t("contact_placeholder_email")}
                     />
@@ -485,8 +487,8 @@ export default function ContactSection() {
                       rows={5}
                       aria-invalid={Boolean(fieldErrors.message)}
                       aria-describedby={fieldErrors.message ? "contact-message-error" : undefined}
-                      className={`w-full bg-surface-2 border rounded-lg px-4 py-2.5 text-text-primary placeholder-muted focus:outline-none focus:shadow-[0_0_0_3px_rgba(15,79,232,0.15)] transition-all text-sm resize-none ${
-                        fieldErrors.message ? "border-danger/50" : "border-border focus:border-primary"
+                      className={`w-full resize-none rounded-2xl border bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:shadow-[0_0_0_3px_rgba(15,23,42,0.08)] transition-all text-sm ${
+                        fieldErrors.message ? "border-danger/50" : "border-slate-200 focus:border-slate-400"
                       }`}
                       placeholder={t("contact_placeholder_message")}
                     />
@@ -516,7 +518,7 @@ export default function ContactSection() {
                     disabled={isSubmitDisabled}
                     whileHover={isSubmitDisabled ? undefined : { scale: 1.02 }}
                     whileTap={isSubmitDisabled ? undefined : { scale: 0.98 }}
-                    className="btn-shimmer w-full bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg transition-colors glow-primary"
+                    className="w-full rounded-full bg-slate-900 px-4 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {status === "sending" ? (
                       <span className="flex items-center justify-center gap-2">

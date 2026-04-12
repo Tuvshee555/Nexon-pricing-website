@@ -24,9 +24,9 @@ export default function Step4BotConfig({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold text-text-primary mb-1">Bot тохиргоо</h2>
-        <p className="text-text-secondary text-sm">
-          Guided маягаар bot-оо тохируулаад, хүсвэл Advanced горимоор raw system prompt-оо засаж болно.
+        <h2 className="mb-1 text-xl font-bold text-slate-950">Tune the bot</h2>
+        <p className="text-sm text-slate-600">
+          Use the guided builder to set the tone, structure the prompt, and define the welcome message.
         </p>
       </div>
 
@@ -35,7 +35,7 @@ export default function Step4BotConfig({
         initialBotPrompt={initialPrompt || ""}
         initialWelcomeMessage={initialWelcome || ""}
         initialBotTone={initialTone || "friendly"}
-        submitLabel="Хадгалах"
+        submitLabel="Save and continue"
         onBack={onBack}
         onSaved={onNext}
         onSave={async ({ botName, botPrompt, welcomeMessage, botTone }) => {
@@ -54,11 +54,11 @@ export default function Step4BotConfig({
 
             const data = await res.json();
             if (!res.ok) {
-              return { ok: false, error: data.error || "Алдаа гарлаа" };
+              return { ok: false, error: data.error || "Something went wrong" };
             }
             return { ok: true };
           } catch {
-            return { ok: false, error: "Холболтын алдаа гарлаа" };
+            return { ok: false, error: "Connection error" };
           }
         }}
       />
