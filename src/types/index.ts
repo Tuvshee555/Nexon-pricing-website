@@ -34,7 +34,7 @@ export interface Business {
 }
 
 export type PlanType = "monthly";
-export type MonthlyTier = "basic" | "standard" | "premium" | "enterprise";
+export type MonthlyTier = "free" | "starter" | "growth" | "pro" | "enterprise";
 
 export interface Plan {
   id: string;
@@ -160,27 +160,39 @@ export const SETUP_FEE = 75000;
 
 export const MONTHLY_PLANS = [
   {
-    tier: "basic" as MonthlyTier,
-    nameMn: "Үндсэн",
-    nameEn: "Basic",
-    price: 79000,
-    messageLimit: 600,
+    tier: "free" as MonthlyTier,
+    nameMn: "Үнэгүй",
+    nameEn: "Free",
+    price: 0,
+    contactLimit: 50,
+    messageLimit: 50,
     popular: false,
   },
   {
-    tier: "standard" as MonthlyTier,
-    nameMn: "Стандарт",
-    nameEn: "Standard",
-    price: 129000,
-    messageLimit: 1500,
+    tier: "starter" as MonthlyTier,
+    nameMn: "Стартер",
+    nameEn: "Starter",
+    price: 29000,
+    contactLimit: 500,
+    messageLimit: 500,
+    popular: false,
+  },
+  {
+    tier: "growth" as MonthlyTier,
+    nameMn: "Өсөлт",
+    nameEn: "Growth",
+    price: 69000,
+    contactLimit: 2000,
+    messageLimit: 2000,
     popular: true,
   },
   {
-    tier: "premium" as MonthlyTier,
-    nameMn: "Премиум",
-    nameEn: "Premium",
-    price: 199000,
-    messageLimit: 3000,
+    tier: "pro" as MonthlyTier,
+    nameMn: "Про",
+    nameEn: "Pro",
+    price: 129000,
+    contactLimit: 5000,
+    messageLimit: 5000,
     popular: false,
   },
   {
@@ -188,6 +200,7 @@ export const MONTHLY_PLANS = [
     nameMn: "Энтерпрайз",
     nameEn: "Enterprise",
     price: 0,
+    contactLimit: Infinity,
     messageLimit: Infinity,
     popular: false,
   },
