@@ -10,7 +10,12 @@ export async function POST(request: Request) {
 
   const userId = session.user.id;
   const body = await request.json();
-  const { businessName, businessType } = body as { businessName?: string; businessType?: string };
+  const { businessName, businessType, contactPhone, contactEmail } = body as {
+    businessName?: string;
+    businessType?: string;
+    contactPhone?: string;
+    contactEmail?: string;
+  };
 
   if (!businessName || typeof businessName !== "string" || businessName.trim().length < 1) {
     return NextResponse.json({ error: "Business name is required" }, { status: 400 });
@@ -33,6 +38,8 @@ export async function POST(request: Request) {
     await sql`
       UPDATE businesses
       SET name = ${businessName.trim()}, business_type = ${businessType || "other"},
+          contact_phone = ${contactPhone?.trim() || ""},
+          contact_email = ${contactEmail?.trim() || ""},
           onboarding_step = 1, onboarding_done = false, status = 'paused'
       WHERE id = ${existing.id as string}
     `;
@@ -45,7 +52,7 @@ export async function POST(request: Request) {
       contact_phone, contact_email, status, onboarding_step, onboarding_done
     ) VALUES (
       ${userId}, ${businessName.trim()}, ${businessType || "other"}, '{}', '',
-      '', '', 'paused', 1, false
+      ${contactPhone?.trim() || ""}, ${contactEmail?.trim() || ""}, 'paused', 1, false
     ) RETURNING id
   `;
 

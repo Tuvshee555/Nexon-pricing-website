@@ -111,6 +111,7 @@ export default function OnboardingWizard({
 
   const [step, setStep] = useState(getStartStep);
   const [businessId, setBusinessId] = useState<string>(urlBusinessId || business?.id || "");
+  const [businessType, setBusinessType] = useState<string>(business?.business_type || "");
   const [pageName, setPageName] = useState("");
   const [pageId, setPageId] = useState("");
   const [instagramConnected, setInstagramConnected] = useState(false);
@@ -199,8 +200,9 @@ export default function OnboardingWizard({
             <Step1Business
               initialName={business?.name}
               initialType={business?.business_type}
-              onNext={(bizId) => {
+              onNext={(bizId, bizType) => {
                 setBusinessId(bizId);
+                setBusinessType(bizType);
                 setStep(2);
               }}
             />
@@ -232,6 +234,7 @@ export default function OnboardingWizard({
           {step === 4 && (
             <Step4BotConfig
               businessId={businessId}
+              businessType={businessType}
               initialPrompt={business?.bot_prompt}
               initialBotName={business?.bot_name}
               initialWelcome={business?.welcome_message}

@@ -6,7 +6,7 @@ import { toast } from "sonner";
 interface Props {
   initialName?: string;
   initialType?: string;
-  onNext: (businessId: string) => void;
+  onNext: (businessId: string, businessType: string) => void;
 }
 
 const BUSINESS_TYPES = [
@@ -23,6 +23,8 @@ const BUSINESS_TYPES = [
 export default function Step1Business({ initialName, initialType, onNext }: Props) {
   const [name, setName] = useState(initialName || "");
   const [type, setType] = useState(initialType || "");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleNext = async () => {
@@ -35,14 +37,19 @@ export default function Step1Business({ initialName, initialType, onNext }: Prop
       const res = await fetch("/api/business/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ businessName: name.trim(), businessType: type || "other" }),
+        body: JSON.stringify({
+          businessName: name.trim(),
+          businessType: type || "other",
+          contactPhone: phone.trim(),
+          contactEmail: email.trim(),
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
         toast.error(data.error || "Something went wrong");
         return;
       }
-      onNext(data.businessId);
+      onNext(data.businessId, type || "other");
     } catch {
       toast.error("Connection error");
     } finally {
@@ -57,6 +64,7 @@ export default function Step1Business({ initialName, initialType, onNext }: Prop
         <p className="text-sm text-gray-500">We&apos;ll use this to shape the bot voice and your default setup.</p>
       </div>
 
+      {/* Business name */}
       <div>
         <label className="mb-2 block text-sm font-semibold text-gray-700">
           Business name <span className="text-red-400">*</span>
@@ -71,6 +79,7 @@ export default function Step1Business({ initialName, initialType, onNext }: Prop
         />
       </div>
 
+      {/* Business type */}
       <div>
         <p className="mb-3 text-sm font-semibold text-gray-700">Business type</p>
         <div className="space-y-2">
@@ -98,6 +107,28 @@ export default function Step1Business({ initialName, initialType, onNext }: Prop
               </div>
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Contact info */}
+      <div>
+        <p className="mb-1 text-sm font-semibold text-gray-700">Contact info <span className="font-normal text-gray-400">(optional)</span></p>
+        <p className="mb-3 text-xs text-gray-500">Used by the bot to direct customers when they ask how to reach you.</p>
+        <div className="space-y-3">
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="Phone number, e.g. +976 9900 0000"
+            className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+          />
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Email address, e.g. hello@yourbusiness.com"
+            className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+          />
         </div>
       </div>
 

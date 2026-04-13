@@ -4,6 +4,7 @@ import BotConfigForm from "@/components/dashboard/bot/BotConfigForm";
 
 interface Props {
   businessId: string;
+  businessType?: string;
   initialPrompt?: string;
   initialBotName?: string;
   initialWelcome?: string;
@@ -14,6 +15,7 @@ interface Props {
 
 export default function Step4BotConfig({
   businessId,
+  businessType,
   initialPrompt,
   initialBotName,
   initialWelcome,
@@ -35,6 +37,7 @@ export default function Step4BotConfig({
         initialBotPrompt={initialPrompt || ""}
         initialWelcomeMessage={initialWelcome || ""}
         initialBotTone={initialTone || "friendly"}
+        businessType={businessType}
         submitLabel="Save and continue"
         onBack={onBack}
         onSaved={onNext}
