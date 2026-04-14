@@ -173,7 +173,7 @@ export async function POST(request: Request) {
             ${newBiz.id as string},
             'monthly',
             ${monthlyTier || "basic"},
-            ${mp?.messageLimit === Infinity ? -1 : mp?.messageLimit || null},
+            ${mp?.contactLimit === Infinity ? -1 : mp?.contactLimit || null},
             ${mp?.price || null},
             ${new Date().toISOString().split("T")[0]}
           )
@@ -198,7 +198,7 @@ export async function POST(request: Request) {
           business_id: businessId,
           plan_type: "monthly",
           monthly_tier: body.monthly_tier,
-          monthly_message_limit: monthlyPlan?.messageLimit === Infinity ? -1 : monthlyPlan?.messageLimit || null,
+          monthly_message_limit: monthlyPlan?.contactLimit === Infinity ? -1 : monthlyPlan?.contactLimit || null,
           monthly_price: monthlyPlan?.price || null,
         };
 

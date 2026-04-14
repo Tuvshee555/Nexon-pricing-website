@@ -50,12 +50,6 @@ export default function ClientDashboard({
     return Math.ceil((nextReset.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
   };
 
-  const messageLimit = plan?.monthly_message_limit;
-  const progressPct =
-    monthlyPlan && messageLimit && messageLimit > 0
-      ? Math.min((messagesThisMonth / messageLimit) * 100, 100)
-      : 0;
-
   const virtualBalance = business.virtual_balance || 0;
   const subscriptionPrice = business.subscription_price || 0;
   const nextBillingDate = business.next_billing_date
@@ -160,7 +154,7 @@ export default function ClientDashboard({
             {
               label: "Messages this month",
               value: messagesThisMonth.toLocaleString(),
-              sub: messageLimit === -1 ? "Unlimited" : messageLimit ? `${messageLimit.toLocaleString()} limit` : "No limit set",
+              sub: "Activity this billing cycle",
             },
             {
               label: "Virtual balance",
@@ -182,31 +176,6 @@ export default function ClientDashboard({
         </div>
       </div>
 
-      {plan?.plan_type === "monthly" && messageLimit && messageLimit > 0 && (
-        <div className="surface-panel rounded-[30px] p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">Usage pacing</p>
-              <h3 className="mt-2 text-2xl font-black text-slate-900">
-                {messagesThisMonth.toLocaleString()} of {messageLimit.toLocaleString()} messages used
-              </h3>
-              <p className="mt-2 text-sm text-slate-500">
-                {monthlyPlan?.nameEn} plan • resets in {daysUntilReset() ?? "—"} days
-              </p>
-            </div>
-            <div className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
-              {progressPct.toFixed(0)}% used
-            </div>
-          </div>
-
-          <div className="mt-5 h-3 overflow-hidden rounded-full bg-slate-100">
-            <div
-              className={`h-full rounded-full ${progressPct > 90 ? "bg-red-500" : progressPct > 70 ? "bg-amber-400" : "bg-primary"}`}
-              style={{ width: `${progressPct}%` }}
-            />
-          </div>
-        </div>
-      )}
 
       <div className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
         <div className="grid gap-5">

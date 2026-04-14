@@ -19,15 +19,15 @@ const planDetails: Record<
     audienceEn: "Just getting started",
     featuresMn: [
       "1 суваг (Instagram эсвэл Messenger)",
-      "50 хүртэлх contact",
       "Keyword trigger автоматжуулалт",
       "Үндсэн dashboard",
+      "Nexon Chat брэндинг орно",
     ],
     featuresEn: [
       "1 channel (Instagram or Messenger)",
-      "Up to 50 contacts",
       "Keyword trigger automation",
       "Basic dashboard",
+      "Nexon Chat branding included",
     ],
   },
   starter: {
@@ -35,17 +35,17 @@ const planDetails: Record<
     audienceEn: "For small businesses getting started",
     featuresMn: [
       "2 суваг (Instagram + Messenger)",
-      "500 хүртэлх contact",
       "AI автомат хариулт",
       "Үндсэн sequence дусаах",
       "Keyword triggers",
+      "Nexon Chat брэндинг байхгүй",
     ],
     featuresEn: [
       "2 channels (Instagram + Messenger)",
-      "Up to 500 contacts",
       "AI auto-replies",
       "Basic drip sequences",
       "Keyword triggers",
+      "No Nexon Chat branding",
     ],
   },
   growth: {
@@ -53,19 +53,19 @@ const planDetails: Record<
     audienceEn: "For businesses with steady daily messages",
     featuresMn: [
       "2 суваг (Instagram + Messenger)",
-      "2,000 хүртэлх contact",
       "Broadcast илгээлт",
       "Дэвшилтэт автоматжуулалт",
       "2 хэрэглэгчийн эрх",
       "AI + keyword triggers",
+      "Nexon Chat брэндинг байхгүй",
     ],
     featuresEn: [
       "2 channels (Instagram + Messenger)",
-      "Up to 2,000 contacts",
       "Broadcasts",
       "Advanced automations",
       "2 user seats",
       "AI + keyword triggers",
+      "No Nexon Chat branding",
     ],
   },
   pro: {
@@ -73,37 +73,37 @@ const planDetails: Record<
     audienceEn: "For active sales teams",
     featuresMn: [
       "Хязгааргүй суваг",
-      "5,000 хүртэлх contact",
       "Бүх зүйл + Priority дэмжлэг",
       "5 хэрэглэгчийн эрх",
       "Дэлгэрэнгүй аналитик",
       "Sequence + Flow builder",
+      "Nexon Chat брэндинг байхгүй",
     ],
     featuresEn: [
       "Unlimited channels",
-      "Up to 5,000 contacts",
       "Everything + priority support",
       "5 user seats",
       "Advanced analytics",
       "Sequences + Flow builder",
+      "No Nexon Chat branding",
     ],
   },
   enterprise: {
-    audienceMn: "Custom rollout хэрэгтэй байгууллагад",
-    audienceEn: "For organizations needing a custom rollout",
+    audienceMn: "Томоохон байгууллагад",
+    audienceEn: "For large organizations",
     featuresMn: [
-      "Хязгааргүй contact",
       "Хязгааргүй суваг",
       "Custom workflow дизайн",
       "Тусгай onboarding",
       "Хамгийн өндөр дэмжлэг",
+      "Nexon Chat брэндинг байхгүй",
     ],
     featuresEn: [
-      "Unlimited contacts",
       "Unlimited channels",
       "Custom workflow design",
       "Dedicated onboarding",
       "Highest priority support",
+      "No Nexon Chat branding",
     ],
   },
 };
@@ -142,9 +142,9 @@ export default function PricingSection() {
             const features = lang === "mn" ? details.featuresMn : details.featuresEn;
             const planName = lang === "mn" ? plan.nameMn : plan.nameEn;
             const contactLabel =
-              plan.contactLimit === Infinity
-                ? lang === "mn" ? "Хязгааргүй contact" : "Unlimited contacts"
-                : `${plan.contactLimit.toLocaleString()} ${lang === "mn" ? "contact" : "contacts"}`;
+              lang === "mn"
+                ? `${plan.contactLimit.toLocaleString()} contact/сар`
+                : `${plan.contactLimit.toLocaleString()} contacts/month`;
 
             return (
               <div
@@ -165,12 +165,10 @@ export default function PricingSection() {
                   </div>
 
                   <div className="mt-6">
-                    {plan.tier === "enterprise" ? (
-                      <p className="text-2xl font-black text-slate-900">{t("pricing_custom_price")}</p>
-                    ) : plan.tier === "free" ? (
+                    {plan.tier === "free" ? (
                       <div>
                         <p className="text-3xl font-black text-slate-900">0₮</p>
-                        <p className="mt-1 text-xs text-slate-500">{lang === "mn" ? "Үргэлж үнэгүй" : "Always free"}</p>
+                        <p className="mt-1.5 text-xs text-slate-500">{contactLabel}</p>
                       </div>
                     ) : (
                       <div>
@@ -198,24 +196,13 @@ export default function PricingSection() {
 
                   <div className="mt-6">
                     <Link
-                      href={
-                        plan.tier === "enterprise"
-                          ? "#contact"
-                          : `/register?plan=${plan.tier}&source=pricing`
-                      }
-                      onClick={
-                        plan.tier === "enterprise"
-                          ? (e) => {
-                              e.preventDefault();
-                              trackEvent("pricing_enterprise_contact_click", { source: "pricing_section" });
-                              document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" });
-                            }
-                          : () =>
-                              trackEvent("pricing_plan_cta_click", {
-                                tier: plan.tier,
-                                amount: plan.price,
-                                source: "pricing_section",
-                              })
+                      href={`/register?plan=${plan.tier}&source=pricing`}
+                      onClick={() =>
+                        trackEvent("pricing_plan_cta_click", {
+                          tier: plan.tier,
+                          amount: plan.price,
+                          source: "pricing_section",
+                        })
                       }
                       className={`block rounded-full px-4 py-2.5 text-center text-sm font-semibold transition-colors ${
                         plan.popular
@@ -225,9 +212,7 @@ export default function PricingSection() {
                           : "border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
                       }`}
                     >
-                      {plan.tier === "enterprise"
-                        ? t("pricing_contact")
-                        : plan.tier === "free"
+                      {plan.tier === "free"
                         ? lang === "mn" ? "Үнэгүй эхлэх" : "Get started free"
                         : t("pricing_cta")}
                     </Link>

@@ -138,13 +138,13 @@ export default function SetupBusinessForm({ userId, email }: Props) {
             >
               {MONTHLY_PLANS.filter((p) => p.tier !== "enterprise").map((p) => (
                 <option key={p.tier} value={p.tier}>
-                  {p.nameMn} — {p.price.toLocaleString()}₮/сар — {p.messageLimit.toLocaleString()} мессеж
+                  {p.nameMn} — {p.price.toLocaleString()}₮/сар — {p.contactLimit.toLocaleString()} contact/сар
                 </option>
               ))}
             </select>
             {selectedPlan && selectedPlan.tier !== "enterprise" && (
               <p className="text-xs text-muted mt-1">
-                {selectedPlan.price.toLocaleString()}₮/сар, {selectedPlan.messageLimit.toLocaleString()} мессеж
+                {selectedPlan.price.toLocaleString()}₮/сар, {selectedPlan.contactLimit.toLocaleString()} contact/сар
               </p>
             )}
           </div>

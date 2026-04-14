@@ -72,7 +72,7 @@ export async function POST(request: Request) {
 
         const [businesses, plans, threads, keywordTriggers] = await Promise.all([
           sql`SELECT bot_prompt, status, knowledge_json, billing_active FROM businesses WHERE id = ${businessId} LIMIT 1`,
-          sql`SELECT plan_type, monthly_tier, monthly_message_limit, monthly_price FROM plans WHERE business_id = ${businessId} LIMIT 1`,
+          sql`SELECT plan_type, monthly_tier, monthly_price FROM plans WHERE business_id = ${businessId} LIMIT 1`,
           sql`
             SELECT messages FROM conversation_threads
             WHERE business_id = ${businessId} AND platform = ${platform} AND sender_id = ${senderId}

@@ -49,7 +49,7 @@ export async function POST(request: Request) {
         ${businessId},
         'monthly',
         ${monthlyTier},
-        ${monthlyPlan?.messageLimit === Infinity ? -1 : monthlyPlan?.messageLimit || null},
+        ${monthlyPlan?.contactLimit === Infinity ? -1 : monthlyPlan?.contactLimit || null},
         ${monthlyPlan?.price || null},
         ${new Date().toISOString().split("T")[0]}
       )

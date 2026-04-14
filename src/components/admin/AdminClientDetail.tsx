@@ -350,7 +350,7 @@ export default function AdminClientDetail({ business, logs, transactions, thread
               >
                 {MONTHLY_PLANS.filter((p) => p.tier !== "enterprise").map((p) => (
                   <option key={p.tier} value={p.tier}>
-                    {p.nameMn} — {p.price.toLocaleString()}₮/сар — {p.messageLimit.toLocaleString()} мессеж
+                    {p.nameMn} — {p.price.toLocaleString()}₮/сар — {p.contactLimit.toLocaleString()} contact/сар
                   </option>
                 ))}
               </select>
@@ -358,7 +358,7 @@ export default function AdminClientDetail({ business, logs, transactions, thread
                 const selected = MONTHLY_PLANS.find((p) => p.tier === editForm.monthly_tier);
                 return selected && selected.tier !== "enterprise" ? (
                   <div className="bg-surface-2 rounded-lg px-3 py-2 text-xs text-text-secondary">
-                    {selected.price.toLocaleString()}₮/сар · {selected.messageLimit.toLocaleString()} мессеж/сар
+                    {selected.price.toLocaleString()}₮/сар · {selected.contactLimit.toLocaleString()} contact/сар
                   </div>
                 ) : null;
               })()}

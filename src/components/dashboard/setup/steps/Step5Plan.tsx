@@ -216,7 +216,7 @@ export default function Step5Plan({
             </div>
             <div className="flex items-center justify-between">
               <span>Monthly limit</span>
-              <span className="font-semibold text-slate-900">{selectedMonthly.messageLimit.toLocaleString()} messages</span>
+              <span className="font-semibold text-slate-900">{selectedMonthly.contactLimit.toLocaleString()} contacts/month</span>
             </div>
             <div className="flex items-center justify-between">
               <span>Charge now</span>
@@ -304,7 +304,7 @@ export default function Step5Plan({
               <p className={`font-semibold ${selectedMonthly.tier === plan.tier ? "text-slate-900" : "text-slate-950"}`}>
                 {plan.nameMn}
               </p>
-              <p className="text-xs text-slate-500">{plan.messageLimit.toLocaleString()} messages / month</p>
+              <p className="text-xs text-slate-500">{plan.contactLimit.toLocaleString()} contacts / month</p>
               {plan.popular ? (
                 <span className="mt-1 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
                   Popular
@@ -327,7 +327,7 @@ export default function Step5Plan({
           </li>
           <li className="flex items-start gap-2">
             <span className="mt-1 h-2 w-2 rounded-full bg-slate-400" />
-            <span>Your monthly usage limit is {selectedMonthly.messageLimit.toLocaleString()} messages.</span>
+            <span>Your plan includes up to {selectedMonthly.contactLimit.toLocaleString()} contacts/month.</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="mt-1 h-2 w-2 rounded-full bg-slate-400" />

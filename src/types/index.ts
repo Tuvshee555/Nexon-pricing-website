@@ -41,6 +41,7 @@ export interface Plan {
   business_id: string;
   plan_type: PlanType;
   monthly_tier?: MonthlyTier;
+  /** Stores the contact limit for this plan (column reused from monthly_message_limit in DB) */
   monthly_message_limit?: number;
   monthly_price?: number;
   billing_cycle_start?: string;
@@ -164,8 +165,8 @@ export const MONTHLY_PLANS = [
     nameMn: "Үнэгүй",
     nameEn: "Free",
     price: 0,
-    contactLimit: 50,
-    messageLimit: 50,
+    contactLimit: 15,
+    branding: true,
     popular: false,
   },
   {
@@ -173,35 +174,35 @@ export const MONTHLY_PLANS = [
     nameMn: "Стартер",
     nameEn: "Starter",
     price: 29000,
-    contactLimit: 500,
-    messageLimit: 500,
+    contactLimit: 150,
+    branding: false,
     popular: false,
   },
   {
     tier: "growth" as MonthlyTier,
     nameMn: "Өсөлт",
     nameEn: "Growth",
-    price: 69000,
-    contactLimit: 2000,
-    messageLimit: 2000,
+    price: 59000,
+    contactLimit: 1500,
+    branding: false,
     popular: true,
   },
   {
     tier: "pro" as MonthlyTier,
     nameMn: "Про",
     nameEn: "Pro",
-    price: 129000,
-    contactLimit: 5000,
-    messageLimit: 5000,
+    price: 99000,
+    contactLimit: 4500,
+    branding: false,
     popular: false,
   },
   {
     tier: "enterprise" as MonthlyTier,
     nameMn: "Энтерпрайз",
     nameEn: "Enterprise",
-    price: 0,
-    contactLimit: Infinity,
-    messageLimit: Infinity,
+    price: 199000,
+    contactLimit: 15000,
+    branding: false,
     popular: false,
   },
 ];
