@@ -12,42 +12,42 @@ export default function FeaturesSection() {
   const copy =
     lang === "mn"
       ? {
-          eyebrow: "Танай багт хэрэгтэй үндсэн давуу тал",
-          title: "Мессежийг дан чат биш, ажиллах урсгал болгож харуулдаг интерфэйс",
+          eyebrow: "Яагаад Nexon Chat сонгох вэ",
+          title: "Таны бизнес унтаж байхад ч хэрэглэгч хариулт авна",
           subtitle:
-            "Manychat шиг ойлгомжтой байдал, гэхдээ Nexon-ы өөрийн өнгө төрхтэй. Танай баг эхний харагдацаас л юу болж байгааг ойлгоно.",
+            "Instagram, Messenger, Telegram — бүх сувгаас ирсэн мессежэд автоматаар хариулна. Ажилтан хэрэггүй, шөнө ч, амралтын өдөр ч.",
           cards: [
             {
-              title: "Channel-first view",
-              description: "Instagram, Messenger, lead qualification, handoff бүгд нэг логиктой харагдана.",
+              title: "Шөнийн 2 цагт ч хариулна",
+              description: "Хэрэглэгч мессеж бичихэд 3 секундэд автомат хариулт явна. Жижиг бизнес ч том компани шиг ажиллана.",
             },
             {
-              title: "Action-friendly cards",
-              description: "Нэг харцаар metrics, automation health, human takeover цэгүүд тод харагдана.",
+              title: "Instagram, Messenger, Telegram",
+              description: "Гурван суваг нэг дороос удирдана. Ямар ч сувгаар ирсэн мессежийг нэг dashboard-оос харна.",
             },
             {
-              title: "Cleaner visual rhythm",
-              description: "Неон, хэт futuristic эффект багасч, цэвэр card hierarchy болон spacing давамгайлна.",
+              title: "Тогтмол үнэ, гэнэтийн нэмэлт төлбөргүй",
+              description: "Сарын тогтмол төлбөр. Хэрэглэгч олширвол нэмэлт төлбөр гардаггүй. Төлөвлөгөөгөө тайван барина.",
             },
           ],
         }
       : {
-          eyebrow: "The UI advantages your team actually feels",
-          title: "An interface that treats conversations like an operating workflow, not just a chat log",
+          eyebrow: "Why businesses choose Nexon Chat",
+          title: "Your business replies instantly — even while you sleep",
           subtitle:
-            "It keeps the clarity people like about tools such as Manychat, but with a stronger Nexon identity and a calmer product rhythm.",
+            "Instagram, Messenger, Telegram — every DM gets an instant reply. No staff needed, no missed leads at night or on weekends.",
           cards: [
             {
-              title: "Channel-first view",
-              description: "Instagram, Messenger, lead qualification, and handoff points all sit inside one logic.",
+              title: "Reply in 3 seconds, 24/7",
+              description: "Every message gets an instant AI response. Small businesses operate like a big company without hiring extra staff.",
             },
             {
-              title: "Action-friendly cards",
-              description: "Metrics, automation health, and human takeover moments are easier to scan.",
+              title: "Instagram, Messenger & Telegram",
+              description: "All three channels in one dashboard. Manage every conversation from a single place, no switching between apps.",
             },
             {
-              title: "Cleaner visual rhythm",
-              description: "Less neon and less sci-fi, more clear hierarchy, spacing, and purposeful product UI.",
+              title: "Fixed price, no surprise bills",
+              description: "One flat monthly fee. No overage charges if you go viral. You always know exactly what you pay.",
             },
           ],
         };
