@@ -12,6 +12,7 @@ import {
   sendTypingIndicator,
   upsertConversationThreadMessages,
 } from "@/lib/meta";
+// OPENAI_API_KEY still used for main AI reply below
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN!;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY!;
@@ -45,36 +46,6 @@ function matchKeyword(text: string, triggers: KeywordTrigger[]): KeywordTrigger 
  * Intent-based matching using AI — falls back to null if anything fails.
  * Costs ~1 cheap gpt-4o-mini call only when keyword matching misses.
  */
-async function classifyIntent(message: string, triggers: KeywordTrigger[]): Promise<KeywordTrigger | null> {
-  if (triggers.length === 0) return null;
-  try {
-    const intentList = triggers.map((t, i) => `${i + 1}. "${t.keyword}"`).join("\n");
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: OPENAI_MODEL,
-        messages: [
-          {
-            role: "system",
-            content: `You are an intent classifier. Given a user message, determine which of the following intents it matches. Reply with ONLY the number of the matching intent, or "0" if none match clearly.\n\nIntents:\n${intentList}`,
-          },
-          { role: "user", content: message },
-        ],
-        max_tokens: 5,
-        temperature: 0,
-      }),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const answer = (data.choices?.[0]?.message?.content || "0").trim();
-    const idx = parseInt(answer) - 1;
-    if (idx >= 0 && idx < triggers.length) return triggers[idx];
-  } catch {
-    // non-critical — fall back to AI reply
-  }
-  return null;
-}
 
 /** Detects phrases that indicate the bot couldn't answer and needs a human. */
 function detectsEscalation(reply: string): boolean {
@@ -222,13 +193,8 @@ export async function POST(request: Request) {
 
         const triggers = keywordTriggers as KeywordTrigger[];
 
-        // Step 1: exact / contains keyword match
-        let matchedTrigger = matchKeyword(messageText, triggers);
-
-        // Step 2: if no keyword match, try AI intent classification
-        if (!matchedTrigger && triggers.length > 0) {
-          matchedTrigger = await classifyIntent(messageText, triggers);
-        }
+        // Keyword match — if no match, falls through to AI reply
+        const matchedTrigger = matchKeyword(messageText, triggers);
 
         if (matchedTrigger) {
           // Send typing indicator first
