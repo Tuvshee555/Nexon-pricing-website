@@ -44,6 +44,98 @@ export async function sendMetaMessage({
   return res.json().catch(() => null);
 }
 
+/** A button attached to a trigger message. Stored in keyword_triggers.buttons */
+export interface BotButton {
+  title: string;          // max 20 chars (Instagram quick-reply limit)
+  type: "postback" | "url";
+  reply?: string;         // for postback: bot sends this when tapped
+  url?: string;           // for url: opens this link (Messenger only)
+}
+
+/** Prefix used in button payloads so webhook can identify them */
+export const BTN_PAYLOAD_PREFIX = "NEXON_BTN:";
+
+/**
+ * Send a message with up to 3 buttons.
+ * - Messenger → Button Template (supports URL + postback buttons)
+ * - Instagram  → Quick Replies (all become quick-reply chips; URL buttons open via webview)
+ */
+export async function sendMessageWithButtons({
+  recipientId,
+  text,
+  buttons,
+  pageAccessToken,
+  platform,
+}: {
+  recipientId: string;
+  text: string;
+  buttons: BotButton[];
+  pageAccessToken: string;
+  platform: string;
+}) {
+  const safe = buttons.slice(0, 3);
+
+  if (platform === "messenger") {
+    const fbButtons = safe.map((btn) => {
+      if (btn.type === "url" && btn.url) {
+        return { type: "web_url", title: btn.title.slice(0, 20), url: btn.url };
+      }
+      return {
+        type: "postback",
+        title: btn.title.slice(0, 20),
+        payload: BTN_PAYLOAD_PREFIX + JSON.stringify({ r: (btn.reply || "").slice(0, 900) }),
+      };
+    });
+
+    const payload = {
+      recipient: { id: recipientId },
+      messaging_type: "RESPONSE",
+      message: {
+        attachment: {
+          type: "template",
+          payload: {
+            template_type: "button",
+            text: text.slice(0, 640),
+            buttons: fbButtons,
+          },
+        },
+      },
+    };
+
+    const res = await fetch(`${FB_BASE}/me/messages?access_token=${pageAccessToken}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`Meta send error: ${await res.text()}`);
+    return res.json().catch(() => null);
+  }
+
+  // Instagram — quick replies
+  const quickReplies = safe.map((btn) => ({
+    content_type: "text",
+    title: btn.title.slice(0, 20),
+    payload:
+      btn.type === "url" && btn.url
+        ? BTN_PAYLOAD_PREFIX + JSON.stringify({ u: btn.url })
+        : BTN_PAYLOAD_PREFIX + JSON.stringify({ r: (btn.reply || "").slice(0, 900) }),
+  }));
+
+  const payload = {
+    recipient: { id: recipientId },
+    messaging_type: "RESPONSE",
+    message: { text, quick_replies: quickReplies },
+  };
+
+  const res = await fetch(`${FB_BASE}/me/messages?access_token=${pageAccessToken}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`Meta send error: ${await res.text()}`);
+  return res.json().catch(() => null);
+}
+
 export async function upsertConversationThreadMessages({
   businessId,
   platform,
@@ -77,6 +169,44 @@ export async function upsertConversationThreadMessages({
   `;
 
   return updatedMessages;
+}
+
+export async function sendTypingIndicator({
+  recipientId,
+  pageAccessToken,
+}: {
+  recipientId: string;
+  pageAccessToken: string;
+}) {
+  try {
+    await fetch(`${FB_BASE}/me/messages?access_token=${pageAccessToken}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        recipient: { id: recipientId },
+        sender_action: "typing_on",
+      }),
+    });
+  } catch {
+    // non-critical
+  }
+}
+
+export async function replyToComment({
+  commentId,
+  message,
+  pageAccessToken,
+}: {
+  commentId: string;
+  message: string;
+  pageAccessToken: string;
+}) {
+  const res = await fetch(`${FB_BASE}/${commentId}/replies?access_token=${pageAccessToken}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message }),
+  });
+  return res.json().catch(() => null);
 }
 
 export async function logMessageDelivery({

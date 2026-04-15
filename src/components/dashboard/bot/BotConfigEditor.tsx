@@ -91,12 +91,13 @@ export default function BotConfigEditor({
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
-    if (!file.name.toLowerCase().endsWith(".json")) {
-      toast.error("Please upload a .json file");
+    const nameLower = file.name.toLowerCase();
+    if (!nameLower.endsWith(".json") && !nameLower.endsWith(".txt") && !nameLower.endsWith(".md")) {
+      toast.error("Please upload a .json or .txt file");
       return;
     }
-    if (file.size > 100 * 1024) {
-      toast.error("File must be 100KB or smaller");
+    if (file.size > 200 * 1024) {
+      toast.error("File must be 200KB or smaller");
       return;
     }
 
@@ -257,7 +258,7 @@ export default function BotConfigEditor({
                 {removingKnowledge ? "Removing..." : "Remove"}
               </button>
             ) : null}
-            <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleKnowledgeFileChange} />
+            <input ref={fileInputRef} type="file" accept=".json,.txt,.md" className="hidden" onChange={handleKnowledgeFileChange} />
           </div>
           <p className="text-xs text-slate-500">
             Upload a JSON file with business info, FAQs, pricing, and any other reference details.

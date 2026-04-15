@@ -13,7 +13,7 @@ export async function GET() {
 
   const businessId = businesses[0].id as string;
   const triggers = await sql`
-    SELECT id, business_id, keyword, match_type, response, platform, enabled, sequence_id, trigger_fires_count, created_at
+    SELECT id, business_id, keyword, match_type, response, buttons, platform, enabled, sequence_id, trigger_fires_count, created_at
     FROM keyword_triggers
     WHERE business_id = ${businessId}
     ORDER BY created_at DESC
@@ -28,18 +28,20 @@ export async function POST(request: Request) {
 
   const userId = session.user.id;
   const body = await request.json();
-  const { keyword, matchType, response, platform, sequenceId } = body;
+  const { keyword, matchType, response, platform, sequenceId, buttons } = body;
 
   if (!keyword || !response) return NextResponse.json({ error: "keyword and response required" }, { status: 400 });
+
+  const safeButtons = Array.isArray(buttons) ? buttons.slice(0, 3) : [];
 
   const businesses = await sql`SELECT id FROM businesses WHERE user_id = ${userId} LIMIT 1`;
   if (!businesses[0]) return NextResponse.json({ error: "No business" }, { status: 404 });
   const businessId = businesses[0].id as string;
 
   const rows = await sql`
-    INSERT INTO keyword_triggers (business_id, keyword, match_type, response, platform, sequence_id)
-    VALUES (${businessId}, ${keyword}, ${matchType || "contains"}, ${response}, ${platform || "all"}, ${sequenceId || null})
-    RETURNING id, business_id, keyword, match_type, response, platform, enabled, sequence_id, trigger_fires_count, created_at
+    INSERT INTO keyword_triggers (business_id, keyword, match_type, response, buttons, platform, sequence_id)
+    VALUES (${businessId}, ${keyword}, ${matchType || "contains"}, ${response}, ${JSON.stringify(safeButtons)}::jsonb, ${platform || "all"}, ${sequenceId || null})
+    RETURNING id, business_id, keyword, match_type, response, buttons, platform, enabled, sequence_id, trigger_fires_count, created_at
   `;
 
   return NextResponse.json({ trigger: rows[0] });

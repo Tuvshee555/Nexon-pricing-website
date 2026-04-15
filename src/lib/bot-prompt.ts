@@ -170,11 +170,21 @@ export function estimateTokensFromChars(text: string): number {
 }
 
 export function appendKnowledgeSection(prompt: string, knowledgeJson: unknown | null | undefined): string {
-  const knowledgeSection = knowledgeJson
-    ? "\n\nBusiness knowledge base (use this to answer questions):\n" + JSON.stringify(knowledgeJson, null, 0)
-    : "";
+  if (!knowledgeJson) return prompt || "";
 
-  return `${prompt || ""}${knowledgeSection}`;
+  // Plain text format: {"type": "plaintext", "content": "..."}
+  if (
+    typeof knowledgeJson === "object" &&
+    knowledgeJson !== null &&
+    !Array.isArray(knowledgeJson) &&
+    (knowledgeJson as Record<string, unknown>).type === "plaintext"
+  ) {
+    const content = (knowledgeJson as Record<string, unknown>).content as string;
+    return `${prompt || ""}\n\nBusiness knowledge base:\n${content}`;
+  }
+
+  // JSON format (default)
+  return `${prompt || ""}\n\nBusiness knowledge base (use this to answer questions):\n${JSON.stringify(knowledgeJson, null, 0)}`;
 }
 
 export function composePromptFromSections(

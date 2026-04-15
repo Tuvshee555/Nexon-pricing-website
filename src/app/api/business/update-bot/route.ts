@@ -9,11 +9,12 @@ export async function POST(request: Request) {
 
   const userId = session.user.id;
   const body = await request.json();
-  const { botPrompt, botName, welcomeMessage, botTone } = body as {
+  const { botPrompt, botName, welcomeMessage, botTone, aiCommentsEnabled } = body as {
     botPrompt?: string;
     botName?: string;
     welcomeMessage?: string;
     botTone?: string;
+    aiCommentsEnabled?: boolean;
   };
 
   const validTones = ["friendly", "formal", "professional", "casual"];
@@ -33,7 +34,8 @@ export async function POST(request: Request) {
         bot_name = ${botName || "Nexon Bot"},
         welcome_message = ${welcomeMessage || ""},
         bot_tone = ${safeTone},
-        onboarding_step = ${newStep}
+        onboarding_step = ${newStep},
+        ai_comments_enabled = ${typeof aiCommentsEnabled === "boolean" ? aiCommentsEnabled : false}
     WHERE id = ${business.id as string}
   `;
 

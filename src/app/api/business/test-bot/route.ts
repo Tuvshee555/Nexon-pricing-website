@@ -13,10 +13,11 @@ export async function POST(request: Request) {
 
   const userId = session.user.id;
   const body = await request.json();
-  const { message, botPrompt, botName } = body as {
+  const { message, botPrompt, botName, history } = body as {
     message?: string;
     botPrompt?: string;
     botName?: string;
+    history?: Array<{ role: string; content: string }>;
   };
 
   if (!message || typeof message !== "string" || message.trim().length === 0) {
@@ -32,6 +33,17 @@ export async function POST(request: Request) {
   const basePrompt = botPrompt?.trim() || `Та ${botName || "Nexon Bot"} нэртэй туслах AI байна.`;
   const systemPrompt = appendKnowledgeSection(basePrompt, business.knowledge_json);
 
+  // Use passed history for multi-turn context (up to last 20 turns)
+  const safeHistory = Array.isArray(history)
+    ? history.slice(-20).filter((m) => m.role && m.content)
+    : [];
+
+  const openaiMessages = [
+    { role: "system", content: systemPrompt },
+    ...safeHistory,
+    { role: "user", content: message.trim() },
+  ];
+
   const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -40,11 +52,8 @@ export async function POST(request: Request) {
     },
     body: JSON.stringify({
       model: OPENAI_MODEL,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: message.trim() },
-      ],
-      max_tokens: 300,
+      messages: openaiMessages,
+      max_tokens: 400,
     }),
   });
 
