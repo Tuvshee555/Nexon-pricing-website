@@ -377,7 +377,7 @@ export async function POST(request: Request) {
         if (!commentText || !commentId || !commentSenderId) continue;
 
         // Re-resolve businessId for comment entries
-        let commentBusinessId = businessId;
+        const commentBusinessId = businessId;
         if (!commentBusinessId) continue;
 
         const commentBusinessRows = await sql`
