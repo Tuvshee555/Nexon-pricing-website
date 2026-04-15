@@ -14,7 +14,7 @@ export default function HeroSection() {
   const copy =
     lang === "mn"
       ? {
-          eyebrow: "Instagram, Messenger автоматжуулалт",
+          eyebrow: "Instagram, Messenger, Telegram автоматжуулалт",
           title: "Олон дахин давтагддаг чатуудыг танай брэндэд тохирсон AI урсгал болгож хувирга",
           subtitle:
             "Nexon нь асуулт, үнэ, хүргэлт, захиалга, гар дамжуулах мөчүүдийг нэг хяналтын системд оруулж, танай inbox-ийг илүү цэвэрхэн ажиллуулна.",
@@ -38,15 +38,15 @@ export default function HeroSection() {
             { label: "Delivery FAQ assistant", state: "Healthy" },
             { label: "Manager handoff rule", state: "Ready" },
           ],
-          channels: ["Instagram DM", "Messenger", "Lead routing"],
+          channels: ["Instagram DM", "Messenger", "Telegram"],
           stats: [
-            { label: "Идэвхтэй сувгууд", value: "Instagram + Messenger" },
+            { label: "Идэвхтэй сувгууд", value: "3 суваг" },
             { label: "Flow бүтэц", value: "Guided setup" },
             { label: "Handoff policy", value: "Team-ready" },
           ],
         }
       : {
-          eyebrow: "Instagram and Messenger automation",
+          eyebrow: "Instagram, Messenger & Telegram automation",
           title: "Turn repeat conversations into an AI workflow that still feels like your team",
           subtitle:
             "Nexon brings questions, pricing, delivery, orders, and handoff moments into one operating system so your inbox stays fast and clear.",
@@ -70,9 +70,9 @@ export default function HeroSection() {
             { label: "Delivery FAQ assistant", state: "Healthy" },
             { label: "Manager handoff rule", state: "Ready" },
           ],
-          channels: ["Instagram DM", "Messenger", "Lead routing"],
+          channels: ["Instagram DM", "Messenger", "Telegram"],
           stats: [
-            { label: "Active channels", value: "Instagram + Messenger" },
+            { label: "Active channels", value: "3 channels" },
             { label: "Flow structure", value: "Guided setup" },
             { label: "Handoff policy", value: "Team-ready" },
           ],

@@ -17,10 +17,10 @@ const LanguageContext = createContext<LanguageContextType>({
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLang] = useState<Language>(() => {
-    if (typeof window === "undefined") return "en";
+    if (typeof window === "undefined") return "mn";
     const stored = window.localStorage.getItem("nexon-lang");
     if (stored === "mn" || stored === "en") return stored;
-    return window.navigator.language.toLowerCase().startsWith("mn") ? "mn" : "en";
+    return window.navigator.language.toLowerCase().startsWith("en") ? "en" : "mn";
   });
 
   useEffect(() => {

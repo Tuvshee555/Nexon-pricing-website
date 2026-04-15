@@ -18,7 +18,7 @@ export default function HowItWorksSection() {
             {
               number: "01",
               title: "Сувгаа холбоно",
-              description: "Instagram болон Messenger account-уудаа холбож, ямар төрлийн чат ирдгийг Nexon-д ойлгуулна.",
+              description: "Instagram, Messenger, Telegram account-уудаа холбож, ямар төрлийн чат ирдгийг Nexon-д ойлгуулна.",
             },
             {
               number: "02",
@@ -39,7 +39,7 @@ export default function HowItWorksSection() {
             {
               number: "01",
               title: "Connect your channels",
-              description: "Link Instagram and Messenger so Nexon can understand where conversations arrive from.",
+              description: "Link Instagram, Messenger, and Telegram so Nexon can understand where conversations arrive from.",
             },
             {
               number: "02",
