@@ -176,6 +176,77 @@ const mn = {
   register_verify_message: "Бүртгэлээ баталгаажуулахын тулд и-мэйлээ шалгана уу.",
   register_verify_check: "И-мэйл шалгах",
 
+  // Setup wizard
+  setup_guide: "Тохиргооны гарын авлага",
+  setup_guide_desc: "Зөв суваг холбож, ботын дуу хоолойг тохируулж, эзэлхүүндэд тохирсон төлөвлөгөөгөөр дуусгана.",
+  setup_back: "Буцах",
+  setup_step1_title: "Бизнесийн талаар хэлэх",
+  setup_step1_desc: "Ботын дуу хоолой, prompt болон анхдагч тохиргоог хийхэд ашигладаг.",
+  setup_step2_title: "Facebook холбох",
+  setup_step2_desc: "Messenger автоматжуулалтыг идэвхжүүлж, хуудсуудыг ачааллана.",
+  setup_step3_title: "Instagram холбох",
+  setup_step3_desc: "Instagram DM-ийг Messenger-тэй ижил туршлагаар оруулна.",
+  setup_step4_title: "Ботыг тохируулах",
+  setup_step4_desc: "Эхлүүлэхийн өмнө өнгө аяс, тавтай морилох мессеж, prompt бүтцийг тохируул.",
+  setup_step5_title: "Төлөвлөгөө сонгох",
+  setup_step5_desc: "Эзэлхүүн болон багийн хэмжээнд тохирсон түвшинг сонгоно уу.",
+
+  // Step 1
+  setup_biz_title: "Бизнесийн талаар хэлэх",
+  setup_biz_subtitle: "Ботын дуу хоолой болон анхдагч тохиргоог хийхэд ашиглана.",
+  setup_biz_name_label: "Бизнесийн нэр",
+  setup_biz_name_placeholder: "Жишээ: Nexon Coffee Shop",
+  setup_biz_type_label: "Бизнесийн төрөл",
+  setup_biz_type_restaurant: "Ресторан / Хоол",
+  setup_biz_type_ecommerce: "Цахим худалдаа / Дэлгүүр",
+  setup_biz_type_service: "Үйлчилгээний бизнес",
+  setup_biz_type_healthcare: "Эрүүл мэнд",
+  setup_biz_type_realestate: "Үл хөдлөх хөрөнгө",
+  setup_biz_type_education: "Боловсрол",
+  setup_biz_type_beauty: "Гоо сайхан / Салон",
+  setup_biz_type_other: "Бусад",
+  setup_biz_contact_label: "Холбоо барих мэдээлэл",
+  setup_biz_contact_optional: "(заавал биш)",
+  setup_biz_contact_desc: "Хэрэглэгчид хэрхэн хандах тухай асуух үед боттоор чиглүүлэхэд ашигладаг.",
+  setup_biz_phone_placeholder: "Утасны дугаар, жж: +976 9900 0000",
+  setup_biz_email_placeholder: "И-мэйл хаяг, жж: hello@yourbusiness.com",
+  setup_continue: "Үргэлжлүүлэх",
+  setup_creating: "Үүсгэж байна...",
+  setup_error_biz_name: "Бизнесийн нэрээ оруулна уу",
+
+  // Step 2
+  setup_fb_title: "Facebook холбох",
+  setup_fb_subtitle: "Facebook-ээр нэвтэрч хуудсуудаа ачааллаж Messenger автоматжуулалтыг идэвхжүүл.",
+  setup_fb_info: "Facebook холбогдсоны дараа ашиглах боломжтой хуудсуудыг харуулж, идэвхжүүлэх нэгийг нь сонгуулна.",
+  setup_fb_continue: "Facebook-ээр үргэлжлүүлэх",
+  setup_skip_now: "Одоохондоо алгасах",
+  setup_fb_loading: "Хуудсуудыг ачааллаж байна...",
+  setup_fb_no_pages: "Хуудас олдсонгүй",
+  setup_fb_no_pages_desc: "Үргэлжлүүлэхийн тулд нэг буюу түүнээс олон Facebook бизнес хуудас холбогдсон байх шаардлагатай.",
+  setup_fb_try_again: "Дахин оролдох",
+  setup_fb_connect: "Холбох",
+  setup_fb_connecting: "Холбогдож байна...",
+  setup_fb_not_see: "Хуудсаа харахгүй байна",
+  setup_fb_refresh: "Хуудсуудыг шинэчлэх",
+  setup_skip: "Алгасах",
+  setup_fb_denied: "Facebook зөвшөөрөл цуцлагдлаа. Хэзээ ч дахин оролдож болно.",
+  setup_fb_failed: "Facebook холболт амжилтгүй болов. Дахин оролдоно уу.",
+
+  // Step 3
+  setup_ig_title: "Instagram холбох",
+  setup_ig_subtitle: "Instagram DM-ийг Messenger-тэй ижил автоматжуулалтын туршлагаар оруулна.",
+  setup_ig_feature1: "24/7 автомат хариулт",
+  setup_ig_feature2: "Нийтлэг асуултад хурдан хариулт",
+  setup_ig_feature3: "Messenger-тэй хамт ажилладаг",
+  setup_ig_req: "Шаардлага: Instagram бизнес акаунт Facebook хуудастай холбоотой байх ёстой.",
+  setup_ig_connect: "Instagram холбох",
+  setup_ig_connecting: "Холбогдож байна...",
+
+  // Step 4
+  setup_bot_title: "Ботыг тохируулах",
+  setup_bot_subtitle: "Удирдамжтай байгуулагчийг ашиглан өнгө аяс, prompt бүтэц болон тавтай морилох мессежийг тохируулна.",
+  setup_save_continue: "Хадгалаад үргэлжлүүлэх",
+
 } as const;
 
 export default mn;

@@ -176,6 +176,77 @@ const en = {
   register_verify_message: "Please check your email to verify your account.",
   register_verify_check: "Check email",
 
+  // Setup wizard
+  setup_guide: "Setup Guide",
+  setup_guide_desc: "We'll connect the right channels, tune the bot voice, and finish with a plan that matches your volume.",
+  setup_back: "Back",
+  setup_step1_title: "Tell us about the business",
+  setup_step1_desc: "We use this to shape the bot voice, prompt, and default setup.",
+  setup_step2_title: "Connect Facebook",
+  setup_step2_desc: "This unlocks Messenger automation and lets us load your pages.",
+  setup_step3_title: "Connect Instagram",
+  setup_step3_desc: "Let Instagram DMs flow into the same experience as Messenger.",
+  setup_step4_title: "Tune the bot",
+  setup_step4_desc: "Set the tone, welcome message, and prompt structure before launch.",
+  setup_step5_title: "Pick a plan",
+  setup_step5_desc: "Choose the tier that matches your volume and team size.",
+
+  // Step 1
+  setup_biz_title: "Tell us about the business",
+  setup_biz_subtitle: "We'll use this to shape the bot voice and your default setup.",
+  setup_biz_name_label: "Business name",
+  setup_biz_name_placeholder: "Example: Nexon Coffee Shop",
+  setup_biz_type_label: "Business type",
+  setup_biz_type_restaurant: "Restaurant / Food",
+  setup_biz_type_ecommerce: "Ecommerce / Retail",
+  setup_biz_type_service: "Service business",
+  setup_biz_type_healthcare: "Healthcare",
+  setup_biz_type_realestate: "Real estate",
+  setup_biz_type_education: "Education",
+  setup_biz_type_beauty: "Beauty / Salon",
+  setup_biz_type_other: "Other",
+  setup_biz_contact_label: "Contact info",
+  setup_biz_contact_optional: "(optional)",
+  setup_biz_contact_desc: "Used by the bot to direct customers when they ask how to reach you.",
+  setup_biz_phone_placeholder: "Phone number, e.g. +976 9900 0000",
+  setup_biz_email_placeholder: "Email address, e.g. hello@yourbusiness.com",
+  setup_continue: "Continue",
+  setup_creating: "Creating...",
+  setup_error_biz_name: "Please enter your business name",
+
+  // Step 2
+  setup_fb_title: "Connect Facebook",
+  setup_fb_subtitle: "Sign in with Facebook so we can discover your pages and unlock Messenger automation.",
+  setup_fb_info: "After Facebook connects, we'll show the pages you can use and let you pick one to activate.",
+  setup_fb_continue: "Continue with Facebook",
+  setup_skip_now: "Skip for now",
+  setup_fb_loading: "Loading your pages...",
+  setup_fb_no_pages: "No pages found",
+  setup_fb_no_pages_desc: "You need at least one Facebook business page connected to continue.",
+  setup_fb_try_again: "Try again",
+  setup_fb_connect: "Connect",
+  setup_fb_connecting: "Connecting...",
+  setup_fb_not_see: "I don't see my page",
+  setup_fb_refresh: "Refresh pages",
+  setup_skip: "Skip",
+  setup_fb_denied: "The Facebook authorization was canceled. You can try again anytime.",
+  setup_fb_failed: "Facebook connection failed. Please try again.",
+
+  // Step 3
+  setup_ig_title: "Connect Instagram",
+  setup_ig_subtitle: "Connect Instagram so DMs can flow into the same automation experience as Messenger.",
+  setup_ig_feature1: "24/7 automated replies",
+  setup_ig_feature2: "Fast responses to common questions",
+  setup_ig_feature3: "Works alongside Messenger",
+  setup_ig_req: "Requirement: the Instagram business account must be linked to the Facebook page.",
+  setup_ig_connect: "Connect Instagram",
+  setup_ig_connecting: "Connecting...",
+
+  // Step 4
+  setup_bot_title: "Tune the bot",
+  setup_bot_subtitle: "Use the guided builder to set the tone, structure the prompt, and define the welcome message.",
+  setup_save_continue: "Save and continue",
+
 } as const;
 
 export default en;

@@ -1,6 +1,7 @@
 "use client";
 
 import BotConfigForm from "@/components/dashboard/bot/BotConfigForm";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Props {
   businessId: string;
@@ -23,13 +24,13 @@ export default function Step4BotConfig({
   onNext,
   onBack,
 }: Props) {
+  const { t } = useLanguage();
+
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="mb-1 text-xl font-bold text-slate-950">Tune the bot</h2>
-        <p className="text-sm text-slate-600">
-          Use the guided builder to set the tone, structure the prompt, and define the welcome message.
-        </p>
+        <h2 className="mb-1 text-xl font-bold text-slate-950">{t("setup_bot_title")}</h2>
+        <p className="text-sm text-slate-600">{t("setup_bot_subtitle")}</p>
       </div>
 
       <BotConfigForm
@@ -38,7 +39,7 @@ export default function Step4BotConfig({
         initialWelcomeMessage={initialWelcome || ""}
         initialBotTone={initialTone || "friendly"}
         businessType={businessType}
-        submitLabel="Save and continue"
+        submitLabel={t("setup_save_continue")}
         onBack={onBack}
         onSaved={onNext}
         onSave={async ({ botName, botPrompt, welcomeMessage, botTone }) => {

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Props {
   initialName?: string;
@@ -9,18 +10,19 @@ interface Props {
   onNext: (businessId: string, businessType: string) => void;
 }
 
-const BUSINESS_TYPES = [
-  { value: "restaurant", label: "Restaurant / Food", icon: "RS" },
-  { value: "ecommerce", label: "Ecommerce / Retail", icon: "EC" },
-  { value: "service", label: "Service business", icon: "SV" },
-  { value: "healthcare", label: "Healthcare", icon: "HC" },
-  { value: "real_estate", label: "Real estate", icon: "RE" },
-  { value: "education", label: "Education", icon: "ED" },
-  { value: "beauty", label: "Beauty / Salon", icon: "BE" },
-  { value: "other", label: "Other", icon: "OT" },
+const BUSINESS_TYPE_KEYS = [
+  { value: "restaurant", labelKey: "setup_biz_type_restaurant" as const, icon: "RS" },
+  { value: "ecommerce", labelKey: "setup_biz_type_ecommerce" as const, icon: "EC" },
+  { value: "service", labelKey: "setup_biz_type_service" as const, icon: "SV" },
+  { value: "healthcare", labelKey: "setup_biz_type_healthcare" as const, icon: "HC" },
+  { value: "real_estate", labelKey: "setup_biz_type_realestate" as const, icon: "RE" },
+  { value: "education", labelKey: "setup_biz_type_education" as const, icon: "ED" },
+  { value: "beauty", labelKey: "setup_biz_type_beauty" as const, icon: "BE" },
+  { value: "other", labelKey: "setup_biz_type_other" as const, icon: "OT" },
 ];
 
 export default function Step1Business({ initialName, initialType, onNext }: Props) {
+  const { t } = useLanguage();
   const [name, setName] = useState(initialName || "");
   const [type, setType] = useState(initialType || "");
   const [phone, setPhone] = useState("");
@@ -29,7 +31,7 @@ export default function Step1Business({ initialName, initialType, onNext }: Prop
 
   const handleNext = async () => {
     if (!name.trim()) {
-      toast.error("Please enter your business name");
+      toast.error(t("setup_error_biz_name"));
       return;
     }
     setLoading(true);
@@ -60,20 +62,20 @@ export default function Step1Business({ initialName, initialType, onNext }: Prop
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="mb-1 text-2xl font-black text-gray-900">Tell us about the business</h1>
-        <p className="text-sm text-gray-500">We&apos;ll use this to shape the bot voice and your default setup.</p>
+        <h1 className="mb-1 text-2xl font-black text-gray-900">{t("setup_biz_title")}</h1>
+        <p className="text-sm text-gray-500">{t("setup_biz_subtitle")}</p>
       </div>
 
       {/* Business name */}
       <div>
         <label className="mb-2 block text-sm font-semibold text-gray-700">
-          Business name <span className="text-red-400">*</span>
+          {t("setup_biz_name_label")} <span className="text-red-400">*</span>
         </label>
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Example: Nexon Coffee Shop"
+          placeholder={t("setup_biz_name_placeholder")}
           className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
           onKeyDown={(e) => e.key === "Enter" && handleNext()}
         />
@@ -81,9 +83,9 @@ export default function Step1Business({ initialName, initialType, onNext }: Prop
 
       {/* Business type */}
       <div>
-        <p className="mb-3 text-sm font-semibold text-gray-700">Business type</p>
+        <p className="mb-3 text-sm font-semibold text-gray-700">{t("setup_biz_type_label")}</p>
         <div className="space-y-2">
-          {BUSINESS_TYPES.map((bt) => (
+          {BUSINESS_TYPE_KEYS.map((bt) => (
             <button
               key={bt.value}
               type="button"
@@ -96,7 +98,7 @@ export default function Step1Business({ initialName, initialType, onNext }: Prop
                 {bt.icon}
               </span>
               <span className={`text-sm font-medium ${type === bt.value ? "text-slate-900" : "text-gray-700"}`}>
-                {bt.label}
+                {t(bt.labelKey)}
               </span>
               <div
                 className={`ml-auto flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 ${
@@ -112,21 +114,23 @@ export default function Step1Business({ initialName, initialType, onNext }: Prop
 
       {/* Contact info */}
       <div>
-        <p className="mb-1 text-sm font-semibold text-gray-700">Contact info <span className="font-normal text-gray-400">(optional)</span></p>
-        <p className="mb-3 text-xs text-gray-500">Used by the bot to direct customers when they ask how to reach you.</p>
+        <p className="mb-1 text-sm font-semibold text-gray-700">
+          {t("setup_biz_contact_label")} <span className="font-normal text-gray-400">{t("setup_biz_contact_optional")}</span>
+        </p>
+        <p className="mb-3 text-xs text-gray-500">{t("setup_biz_contact_desc")}</p>
         <div className="space-y-3">
           <input
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            placeholder="Phone number, e.g. +976 9900 0000"
+            placeholder={t("setup_biz_phone_placeholder")}
             className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
           />
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email address, e.g. hello@yourbusiness.com"
+            placeholder={t("setup_biz_email_placeholder")}
             className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
           />
         </div>
@@ -137,7 +141,7 @@ export default function Step1Business({ initialName, initialType, onNext }: Prop
         disabled={loading || !name.trim()}
         className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 disabled:opacity-40"
       >
-        {loading ? "Creating..." : "Continue"}
+        {loading ? t("setup_creating") : t("setup_continue")}
         {!loading && (
           <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

@@ -8,6 +8,7 @@ import Step2Facebook from "./steps/Step2Facebook";
 import Step3Instagram from "./steps/Step3Instagram";
 import Step4BotConfig from "./steps/Step4BotConfig";
 import Step5Plan from "./steps/Step5Plan";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface BusinessData {
   id?: string;
@@ -28,6 +29,14 @@ interface Props {
   fbError?: string;
   initialMonthlyTier?: string;
 }
+
+const STEP_KEYS = [
+  { titleKey: "setup_step1_title", descKey: "setup_step1_desc" },
+  { titleKey: "setup_step2_title", descKey: "setup_step2_desc" },
+  { titleKey: "setup_step3_title", descKey: "setup_step3_desc" },
+  { titleKey: "setup_step4_title", descKey: "setup_step4_desc" },
+  { titleKey: "setup_step5_title", descKey: "setup_step5_desc" },
+] as const;
 
 const STEPS = [
   {
@@ -101,6 +110,7 @@ export default function OnboardingWizard({
   initialMonthlyTier,
 }: Props) {
   const router = useRouter();
+  const { t, lang } = useLanguage();
 
   const getStartStep = () => {
     if (fbConnected && initialStep) return initialStep;
@@ -121,6 +131,7 @@ export default function OnboardingWizard({
   }, [fbConnected, step]);
 
   const current = STEPS[step - 1];
+  const currentKeys = STEP_KEYS[step - 1];
 
   const handleBack = () => {
     if (step > 1) setStep(step - 1);
@@ -138,8 +149,8 @@ export default function OnboardingWizard({
 
         <div className="relative z-10 flex flex-1 flex-col items-center justify-center text-center">
           {current.illustration}
-          <h2 className="mb-3 text-2xl font-black leading-tight text-white">{current.title}</h2>
-          <p className="max-w-xs text-sm leading-relaxed text-white/65">{current.desc}</p>
+          <h2 className="mb-3 text-2xl font-black leading-tight text-white">{t(currentKeys.titleKey)}</h2>
+          <p className="max-w-xs text-sm leading-relaxed text-white/65">{t(currentKeys.descKey)}</p>
         </div>
 
         <div className="relative z-10">
@@ -151,11 +162,11 @@ export default function OnboardingWizard({
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
-              Back
+              {t("setup_back")}
             </button>
           ) : (
             <p className="text-xs text-white/30">
-              Step {step} / {STEPS.length}
+              {lang === "mn" ? "Алхам" : "Step"} {step} / {STEPS.length}
             </p>
           )}
         </div>
@@ -190,9 +201,9 @@ export default function OnboardingWizard({
 
         <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-8 py-8 lg:px-16">
           <div className="mb-8 rounded-[28px] border border-slate-200 bg-slate-50 p-5">
-            <p className="section-label">Setup guide</p>
+            <p className="section-label">{t("setup_guide")}</p>
             <p className="mt-3 text-sm leading-7 text-slate-600">
-              We&apos;ll connect the right channels, tune the bot voice, and finish with a plan that matches your volume.
+              {t("setup_guide_desc")}
             </p>
           </div>
 

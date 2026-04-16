@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Props {
   businessId: string;
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function Step3Instagram({ businessId, pageId, onNext, onSkip }: Props) {
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
 
   const handleConnect = async () => {
@@ -53,10 +55,8 @@ export default function Step3Instagram({ businessId, pageId, onNext, onSkip }: P
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="mb-1 text-xl font-bold text-slate-950">Connect Instagram</h2>
-        <p className="text-sm text-slate-600">
-          Connect Instagram so DMs can flow into the same automation experience as Messenger.
-        </p>
+        <h2 className="mb-1 text-xl font-bold text-slate-950">{t("setup_ig_title")}</h2>
+        <p className="text-sm text-slate-600">{t("setup_ig_subtitle")}</p>
       </div>
 
       <div className="rounded-xl border border-pink-500/20 bg-gradient-to-br from-pink-500/10 to-purple-500/10 p-5">
@@ -68,7 +68,6 @@ export default function Step3Instagram({ businessId, pageId, onNext, onSkip }: P
           </div>
           <div>
             <p className="font-semibold text-slate-950">Instagram Direct</p>
-            <p className="text-xs text-slate-500">Automatic replies for DMs</p>
           </div>
         </div>
         <ul className="space-y-2 text-sm text-slate-600">
@@ -76,25 +75,25 @@ export default function Step3Instagram({ businessId, pageId, onNext, onSkip }: P
             <svg className="h-4 w-4 shrink-0 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
-            24/7 automated replies
+            {t("setup_ig_feature1")}
           </li>
           <li className="flex items-center gap-2">
             <svg className="h-4 w-4 shrink-0 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
-            Fast responses to common questions
+            {t("setup_ig_feature2")}
           </li>
           <li className="flex items-center gap-2">
             <svg className="h-4 w-4 shrink-0 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
-            Works alongside Messenger
+            {t("setup_ig_feature3")}
           </li>
         </ul>
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-        <strong className="text-slate-700">Requirement:</strong> the Instagram business account must be linked to the Facebook page.
+        {t("setup_ig_req")}
       </div>
 
       <div className="space-y-3">
@@ -109,14 +108,14 @@ export default function Step3Instagram({ businessId, pageId, onNext, onSkip }: P
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-              Connecting...
+              {t("setup_ig_connecting")}
             </>
           ) : (
-            "Connect Instagram"
+            t("setup_ig_connect")
           )}
         </button>
         <button onClick={onSkip} className="w-full py-2 text-sm text-slate-500 transition-colors hover:text-slate-700">
-          Skip for now
+          {t("setup_skip_now")}
         </button>
       </div>
     </div>

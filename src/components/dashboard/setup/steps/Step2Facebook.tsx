@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface FacebookPageOption {
   id: string;
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export default function Step2Facebook({ businessId, fbConnected, fbError, onNext, onSkip }: Props) {
+  const { t } = useLanguage();
   const [pages, setPages] = useState<FacebookPageOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [connecting, setConnecting] = useState<string | null>(null);
@@ -83,22 +85,18 @@ export default function Step2Facebook({ businessId, fbConnected, fbError, onNext
     return (
       <div className="space-y-8">
         <div>
-          <h1 className="mb-1 text-2xl font-black text-gray-900">Connect Facebook</h1>
-          <p className="text-sm text-gray-500">
-            Sign in with Facebook so we can discover your pages and unlock Messenger automation.
-          </p>
+          <h1 className="mb-1 text-2xl font-black text-gray-900">{t("setup_fb_title")}</h1>
+          <p className="text-sm text-gray-500">{t("setup_fb_subtitle")}</p>
         </div>
 
         {fbError && (
           <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
-            {fbError === "fb_denied"
-              ? "The Facebook authorization was canceled. You can try again anytime."
-              : "Facebook connection failed. Please try again."}
+            {fbError === "fb_denied" ? t("setup_fb_denied") : t("setup_fb_failed")}
           </div>
         )}
 
         <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-700">
-          After Facebook connects, we&apos;ll show the pages you can use and let you pick one to activate.
+          {t("setup_fb_info")}
         </div>
 
         <button
@@ -108,11 +106,11 @@ export default function Step2Facebook({ businessId, fbConnected, fbError, onNext
           <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
             <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
           </svg>
-          Continue with Facebook
+          {t("setup_fb_continue")}
         </button>
 
         <button onClick={onSkip} className="w-full py-2 text-sm text-gray-400 transition-colors hover:text-gray-600">
-          Skip for now
+          {t("setup_skip_now")}
         </button>
       </div>
     );
@@ -121,7 +119,7 @@ export default function Step2Facebook({ businessId, fbConnected, fbError, onNext
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="mb-1 text-2xl font-black text-gray-900">Connect Facebook</h1>
+        <h1 className="mb-1 text-2xl font-black text-gray-900">{t("setup_fb_title")}</h1>
       </div>
 
       {loading ? (
@@ -130,7 +128,7 @@ export default function Step2Facebook({ businessId, fbConnected, fbError, onNext
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
-          Loading your pages...
+          {t("setup_fb_loading")}
         </div>
       ) : pages.length === 0 ? (
         <div className="py-12 text-center">
@@ -139,16 +137,16 @@ export default function Step2Facebook({ businessId, fbConnected, fbError, onNext
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <p className="mb-1 font-semibold text-gray-700">No pages found</p>
-          <p className="mb-5 text-sm text-gray-400">You need at least one Facebook business page connected to continue.</p>
+          <p className="mb-1 font-semibold text-gray-700">{t("setup_fb_no_pages")}</p>
+          <p className="mb-5 text-sm text-gray-400">{t("setup_fb_no_pages_desc")}</p>
           <button onClick={handleConnectFacebook} className="text-sm font-semibold text-slate-900 transition-colors hover:text-slate-700">
-            Try again
+            {t("setup_fb_try_again")}
           </button>
         </div>
       ) : (
         <>
           <p className="text-sm text-gray-500">
-            We found <span className="font-semibold text-gray-700">{pages.length} Facebook page{pages.length === 1 ? "" : "s"}</span>.
+            <span className="font-semibold text-gray-700">{pages.length} Facebook {pages.length === 1 ? "page" : "pages"}</span>
           </p>
 
           <div className="overflow-hidden rounded-2xl border border-gray-200">
@@ -171,7 +169,7 @@ export default function Step2Facebook({ businessId, fbConnected, fbError, onNext
                   disabled={connecting === page.id}
                   className="flex-shrink-0 rounded-xl bg-slate-900 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:opacity-50"
                 >
-                  {connecting === page.id ? "Connecting..." : "Connect"}
+                  {connecting === page.id ? t("setup_fb_connecting") : t("setup_fb_connect")}
                 </button>
               </div>
             ))}
@@ -179,15 +177,15 @@ export default function Step2Facebook({ businessId, fbConnected, fbError, onNext
 
           <div className="flex flex-wrap gap-4 text-sm">
             <button onClick={handleConnectFacebook} className="font-medium text-slate-900 transition-colors hover:text-slate-700">
-              I don&apos;t see my page
+              {t("setup_fb_not_see")}
             </button>
             <span className="text-gray-300">|</span>
             <button onClick={fetchPages} className="font-medium text-slate-900 transition-colors hover:text-slate-700">
-              Refresh pages
+              {t("setup_fb_refresh")}
             </button>
             <span className="text-gray-300">|</span>
             <button onClick={onSkip} className="text-gray-400 transition-colors hover:text-gray-600">
-              Skip
+              {t("setup_skip")}
             </button>
           </div>
         </>
