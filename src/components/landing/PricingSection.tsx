@@ -21,14 +21,14 @@ const planDetails: Record<
     audienceEn: "Just getting started",
     featuresMn: [
       "1 суваг (Instagram эсвэл Messenger)",
-      "50 contact хүртэл",
+      "15 contact хүртэл",
       "Keyword trigger автоматжуулалт",
       "Үндсэн dashboard",
       "Nexon Chat брэндинг орно",
     ],
     featuresEn: [
       "1 channel (Instagram or Messenger)",
-      "Up to 50 contacts",
+      "Up to 15 contacts",
       "Keyword trigger automation",
       "Basic dashboard",
       "Nexon Chat branding included",
@@ -39,7 +39,7 @@ const planDetails: Record<
     audienceEn: "For small businesses getting started",
     featuresMn: [
       "Instagram + Messenger + Telegram",
-      "500 contact хүртэл",
+      "150 contact хүртэл",
       "AI автомат хариулт (24/7)",
       "Keyword triggers + sequences",
       "Брэндинг байхгүй",
@@ -47,7 +47,7 @@ const planDetails: Record<
     ],
     featuresEn: [
       "Instagram + Messenger + Telegram",
-      "Up to 500 contacts",
+      "Up to 150 contacts",
       "AI auto-replies (24/7)",
       "Keyword triggers + sequences",
       "No branding",
@@ -59,7 +59,7 @@ const planDetails: Record<
     audienceEn: "For businesses with steady daily messages",
     featuresMn: [
       "Instagram + Messenger + Telegram",
-      "2,000 contact хүртэл",
+      "1,500 contact хүртэл",
       "Broadcast илгээлт",
       "Дэвшилтэт автоматжуулалт",
       "2 хэрэглэгчийн эрх",
@@ -68,7 +68,7 @@ const planDetails: Record<
     ],
     featuresEn: [
       "Instagram + Messenger + Telegram",
-      "Up to 2,000 contacts",
+      "Up to 1,500 contacts",
       "Broadcasts",
       "Advanced automations",
       "2 user seats",
@@ -81,7 +81,7 @@ const planDetails: Record<
     audienceEn: "For active sales teams",
     featuresMn: [
       "Instagram + Messenger + Telegram",
-      "5,000 contact хүртэл",
+      "4,500 contact хүртэл",
       "5 хэрэглэгчийн эрх",
       "Дэлгэрэнгүй аналитик",
       "Sequence + Flow builder",
@@ -90,7 +90,7 @@ const planDetails: Record<
     ],
     featuresEn: [
       "Instagram + Messenger + Telegram",
-      "Up to 5,000 contacts",
+      "Up to 4,500 contacts",
       "5 user seats",
       "Advanced analytics",
       "Sequences + Flow builder",
