@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { motion, useInView } from "framer-motion";
+import { useRef } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { MONTHLY_PLANS, MonthlyTier, SETUP_FEE } from "@/types";
 import { trackEvent } from "@/lib/analytics";
@@ -120,6 +122,8 @@ const planDetails: Record<
 
 export default function PricingSection() {
   const { lang, t } = useLanguage();
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-60px" });
 
   const subtitle =
     lang === "mn"
@@ -127,9 +131,14 @@ export default function PricingSection() {
       : "Start free, upgrade as your business grows.";
 
   return (
-    <section id="pricing" className="px-4 py-20 sm:px-6 lg:px-8">
+    <section ref={ref} id="pricing" className="px-4 py-20 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
-        <div className="mx-auto max-w-3xl text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 18 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.55 }}
+          className="mx-auto max-w-3xl text-center"
+        >
           <p className="section-label justify-center">{t("pricing_title")}</p>
           <h2 className="mt-5 text-4xl font-black tracking-[-0.03em] text-slate-950 sm:text-5xl">
             {lang === "mn"
@@ -143,10 +152,10 @@ export default function PricingSection() {
               ? `Нэг удаагийн setup fee: ${SETUP_FEE.toLocaleString()}₮ (Starter болон дээш)`
               : `One-time setup fee: ${SETUP_FEE.toLocaleString()}₮ (Starter and above)`}
           </div>
-        </div>
+        </motion.div>
 
         <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
-          {MONTHLY_PLANS.map((plan) => {
+          {MONTHLY_PLANS.map((plan, index) => {
             const details = planDetails[plan.tier];
             const audience = lang === "mn" ? details.audienceMn : details.audienceEn;
             const features = lang === "mn" ? details.featuresMn : details.featuresEn;
@@ -157,9 +166,16 @@ export default function PricingSection() {
                 : `${plan.contactLimit.toLocaleString()} contacts/month`;
 
             return (
-              <div
+              <motion.div
                 key={plan.tier}
-                className={`surface-panel flex rounded-[30px] p-1 ${plan.popular ? "ring-2 ring-slate-900" : ""}`}
+                initial={{ opacity: 0, y: 28 }}
+                animate={isInView ? { opacity: 1, y: 0 } : {}}
+                transition={{ duration: 0.5, delay: 0.12 + index * 0.07 }}
+                className={`surface-panel flex rounded-[30px] p-1 transition-all duration-300 hover:-translate-y-1 ${
+                  plan.popular
+                    ? "ring-2 ring-slate-900 glow-primary-lg hover:glow-primary-lg"
+                    : "hover:shadow-lg"
+                }`}
               >
                 <div className="flex w-full flex-col rounded-[26px] bg-white p-5">
                   <div className="flex items-start justify-between gap-2">
@@ -216,7 +232,7 @@ export default function PricingSection() {
                       }
                       className={`block rounded-full px-4 py-2.5 text-center text-sm font-semibold transition-colors ${
                         plan.popular
-                          ? "bg-slate-900 text-white hover:bg-slate-800"
+                          ? "btn-shimmer bg-slate-900 text-white hover:bg-slate-800"
                           : plan.tier === "free"
                           ? "border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
                           : "border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
@@ -228,7 +244,7 @@ export default function PricingSection() {
                     </Link>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
         </div>

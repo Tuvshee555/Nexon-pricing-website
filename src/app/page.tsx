@@ -10,10 +10,12 @@ import TemplatesSection from "@/components/landing/TemplatesSection";
 import TeamSection from "@/components/landing/TeamSection";
 import ContactSection from "@/components/landing/ContactSection";
 import ScrollProgress from "@/components/ui/ScrollProgress";
+import CursorGlow from "@/components/ui/CursorGlow";
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-background">
+      <CursorGlow />
       <ScrollProgress />
       <Navbar />
       <main>

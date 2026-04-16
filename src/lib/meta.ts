@@ -209,6 +209,22 @@ export async function replyToComment({
   return res.json().catch(() => null);
 }
 
+export async function likeComment({
+  commentId,
+  pageAccessToken,
+}: {
+  commentId: string;
+  pageAccessToken: string;
+}) {
+  try {
+    await fetch(`${FB_BASE}/${commentId}/likes?access_token=${pageAccessToken}`, {
+      method: "POST",
+    });
+  } catch {
+    // non-critical
+  }
+}
+
 export async function logMessageDelivery({
   businessId,
   platform,

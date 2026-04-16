@@ -5,6 +5,7 @@ import { appendKnowledgeSection } from "@/lib/bot-prompt";
 import {
   BTN_PAYLOAD_PREFIX,
   type BotButton,
+  likeComment,
   logMessageDelivery,
   replyToComment,
   sendMessageWithButtons,
@@ -27,6 +28,15 @@ type KeywordTrigger = {
   response: string;
   buttons?: BotButton[];
   sequence_id?: string | null;
+};
+
+type CommentTriggerRow = {
+  id: string;
+  keyword: string;
+  match_type: string;
+  public_reply_text: string;
+  dm_message: string;
+  like_comment: boolean;
 };
 
 /** Exact / contains / starts_with keyword match */
@@ -325,7 +335,7 @@ export async function POST(request: Request) {
         }
       }
 
-      // ── Instagram comment replies ────────────────────────────────────────
+      // ── Comment changes ──────────────────────────────────────────────────
       const changes = entry.changes || [];
       for (const change of changes) {
         if (change.field !== "comments") continue;
@@ -342,10 +352,56 @@ export async function POST(request: Request) {
         const commentSenderId = value.from?.id;
         if (!commentText || !commentId || !commentSenderId) continue;
 
-        // Re-resolve businessId for comment entries
         const commentBusinessId = businessId;
         if (!commentBusinessId) continue;
 
+        const platform = body.object === "instagram" ? "instagram" : "messenger";
+
+        // Check comment keyword triggers first
+        const commentTriggersRows = await sql`
+          SELECT id, keyword, match_type, public_reply_text, dm_message, like_comment
+          FROM comment_triggers
+          WHERE business_id = ${commentBusinessId}
+            AND enabled = true
+            AND (platform = 'all' OR platform = ${platform})
+        `;
+
+        const matchedCommentTrigger = (commentTriggersRows as unknown as CommentTriggerRow[]).find((t) => {
+          const lower = commentText.toLowerCase();
+          const kw = t.keyword.toLowerCase();
+          if (t.match_type === "exact") return lower === kw;
+          if (t.match_type === "starts_with") return lower.startsWith(kw);
+          return lower.includes(kw);
+        }) ?? null;
+
+        if (matchedCommentTrigger && pageAccessToken) {
+          if (matchedCommentTrigger.like_comment) {
+            await likeComment({ commentId, pageAccessToken });
+          }
+
+          await replyToComment({
+            commentId,
+            message: matchedCommentTrigger.public_reply_text,
+            pageAccessToken,
+          });
+
+          await sendMetaMessage({
+            recipientId: commentSenderId,
+            text: matchedCommentTrigger.dm_message,
+            pageAccessToken,
+          });
+
+          await sql`
+            UPDATE comment_triggers
+            SET trigger_fires_count = COALESCE(trigger_fires_count, 0) + 1
+            WHERE id = ${matchedCommentTrigger.id}
+          `;
+
+          await logMessageDelivery({ businessId: commentBusinessId, platform });
+          continue; // skip AI comment reply
+        }
+
+        // Fallback: AI comment reply
         const commentBusinessRows = await sql`
           SELECT bot_prompt, status, knowledge_json, billing_active, ai_comments_enabled
           FROM businesses WHERE id = ${commentBusinessId} LIMIT 1
