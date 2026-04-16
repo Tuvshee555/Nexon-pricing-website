@@ -78,6 +78,80 @@ export async function notifySubscriptionDeducted(
   );
 }
 
+// ── Owner notifications (sent to individual business owners, not admin) ────────
+
+export async function notifyOwner(chatId: string, text: string): Promise<void> {
+  try {
+    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML" }),
+    });
+  } catch (err) {
+    console.error("Owner notification failed:", err);
+  }
+}
+
+export async function notifyOwnerContactLimit(
+  chatId: string,
+  businessName: string,
+  used: number,
+  limit: number
+): Promise<void> {
+  const pct = Math.round((used / limit) * 100);
+  await notifyOwner(
+    chatId,
+    `⚠️ <b>Nexon — Контактын хязгаар</b>\n\n` +
+    `👤 Бизнес: <b>${businessName}</b>\n` +
+    `📊 Ашигласан: <b>${used} / ${limit}</b> (${pct}%)\n\n` +
+    `Хязгаарт ойртож байна. Дашбоард дээрээс шинэчлэлт хийнэ үү.\n` +
+    `👉 nexon-digital-nova.com/dashboard`
+  );
+}
+
+export async function notifyOwnerPaymentConfirmed(
+  chatId: string,
+  businessName: string,
+  amount: number,
+  nextDate: string
+): Promise<void> {
+  const dateStr = new Date(nextDate).toLocaleDateString("mn-MN");
+  await notifyOwner(
+    chatId,
+    `✅ <b>Nexon — Төлбөр баталгаажлаа</b>\n\n` +
+    `👤 Бизнес: <b>${businessName}</b>\n` +
+    `💵 Төлсөн: <b>${amount.toLocaleString()}₮</b>\n` +
+    `📅 Дараагийн төлбөр: ${dateStr}\n\n` +
+    `Таны бот үргэлжлүүлэн ажиллаж байна. 🤖`
+  );
+}
+
+export async function notifyOwnerBotPaused(
+  chatId: string,
+  businessName: string
+): Promise<void> {
+  await notifyOwner(
+    chatId,
+    `🔴 <b>Nexon — Бот зогссон</b>\n\n` +
+    `👤 Бизнес: <b>${businessName}</b>\n\n` +
+    `Үлдэгдэл дуусмагц таны бот зогссон.\n` +
+    `Дансаа цэнэглэж дахин идэвхжүүлнэ үү.\n` +
+    `👉 nexon-digital-nova.com/dashboard`
+  );
+}
+
+export async function notifyOwnerBotResumed(
+  chatId: string,
+  businessName: string
+): Promise<void> {
+  await notifyOwner(
+    chatId,
+    `🟢 <b>Nexon — Бот дахин идэвхжлээ</b>\n\n` +
+    `👤 Бизнес: <b>${businessName}</b>\n\n` +
+    `Таны бот дахин хэрэглэгчдийн асуултад хариулж эхэллээ. 🤖`
+  );
+}
+
 export async function notifyContactForm(
   name: string,
   phone: string,

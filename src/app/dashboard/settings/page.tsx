@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
 import { sql } from "@/lib/db";
 import BotConfigEditor from "@/components/dashboard/bot/BotConfigEditor";
+import { TelegramBotSection, NotificationSettingsSection } from "@/components/dashboard/settings/TelegramSettings";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -54,6 +55,11 @@ export default async function SettingsPage() {
           <SummaryCard label="Knowledge base" value={business.knowledge_json ? "Loaded" : "Empty"} />
         </div>
       </section>
+
+      <div className="max-w-4xl space-y-6">
+        <TelegramBotSection />
+        <NotificationSettingsSection />
+      </div>
 
       <div className="max-w-4xl">
         <BotConfigEditor

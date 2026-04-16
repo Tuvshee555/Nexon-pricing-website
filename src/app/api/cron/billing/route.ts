@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
-import { notifySubscriptionDeducted, notifyLowBalance } from "@/lib/telegram";
+import {
+  notifySubscriptionDeducted,
+  notifyLowBalance,
+  notifyOwnerPaymentConfirmed,
+  notifyOwnerBotPaused,
+} from "@/lib/telegram";
 import { insertTransaction } from "@/lib/transactions";
 
 export async function GET(request: NextRequest) {
@@ -28,7 +33,8 @@ async function handleBilling(request: NextRequest) {
     const now = new Date().toISOString();
 
     const dueBusinesses = await sql`
-      SELECT id, name, virtual_balance, subscription_price, next_billing_date
+      SELECT id, name, virtual_balance, subscription_price, next_billing_date,
+             owner_telegram_chat_id, notify_payment, notify_bot_status
       FROM businesses WHERE billing_active = true AND next_billing_date <= ${now}
     `;
 
@@ -42,6 +48,8 @@ async function handleBilling(request: NextRequest) {
       nextDate.setMonth(nextDate.getMonth() + 1);
       const nextDateStr = nextDate.toISOString();
 
+      const ownerChatId = biz.owner_telegram_chat_id as string | null;
+
       if (newBalance < 0) {
         await sql`
           UPDATE businesses
@@ -49,6 +57,10 @@ async function handleBilling(request: NextRequest) {
           WHERE id = ${biz.id as string}
         `;
         await notifyLowBalance(biz.name as string, 0, nextDateStr);
+        // Notify business owner
+        if (ownerChatId && biz.notify_bot_status) {
+          await notifyOwnerBotPaused(ownerChatId, biz.name as string);
+        }
       } else {
         await sql`
           UPDATE businesses SET virtual_balance = ${newBalance}, next_billing_date = ${nextDateStr}
@@ -60,6 +72,10 @@ async function handleBilling(request: NextRequest) {
           paid_at: now, transaction_type: "subscription",
         });
         await notifySubscriptionDeducted(biz.name as string, biz.subscription_price as number, newBalance, nextDateStr);
+        // Notify business owner
+        if (ownerChatId && biz.notify_payment) {
+          await notifyOwnerPaymentConfirmed(ownerChatId, biz.name as string, biz.subscription_price as number, nextDateStr);
+        }
         if (newBalance < (biz.subscription_price as number)) {
           await notifyLowBalance(biz.name as string, newBalance, nextDateStr);
         }
