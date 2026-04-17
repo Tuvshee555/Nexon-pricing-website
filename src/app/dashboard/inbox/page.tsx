@@ -9,6 +9,7 @@ interface Thread {
   last_message_at: string;
   needs_human?: boolean;
   resolved_at?: string | null;
+  assigned_to?: string | null;
   messages: Array<{ role: string; content: string }>;
 }
 
@@ -25,6 +26,8 @@ export default function InboxPage() {
   const [filterPlatform, setFilterPlatform] = useState("all");
   const [filterHuman, setFilterHuman] = useState(false);
   const [resolving, setResolving] = useState(false);
+  const [assigning, setAssigning] = useState(false);
+  const [assignInput, setAssignInput] = useState("");
 
   useEffect(() => {
     fetch("/api/contacts")
@@ -39,14 +42,35 @@ export default function InboxPage() {
     const res = await fetch(`/api/inbox/thread?senderId=${contact.sender_id}&platform=${contact.platform}`);
     const data = await res.json();
     if (data.thread) {
-      // merge needs_human from thread list into the detail view
       const meta = threads.find(
         (t) => t.sender_id === contact.sender_id && t.platform === contact.platform
       );
-      setSelected({ ...data.thread, needs_human: meta?.needs_human, resolved_at: meta?.resolved_at });
+      const thread = { ...data.thread, needs_human: meta?.needs_human, resolved_at: meta?.resolved_at };
+      setSelected(thread);
+      setAssignInput(thread.assigned_to ?? "");
     } else {
       setSelected(null);
+      setAssignInput("");
     }
+  };
+
+  const assignThread = async (assignedTo: string | null) => {
+    if (!selected) return;
+    setAssigning(true);
+    await fetch("/api/inbox/assign", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ senderId: selected.sender_id, platform: selected.platform, assignedTo }),
+    });
+    setSelected((prev) => prev ? { ...prev, assigned_to: assignedTo } : prev);
+    setThreads((prev) =>
+      prev.map((t) =>
+        t.sender_id === selected.sender_id && t.platform === selected.platform
+          ? { ...t, assigned_to: assignedTo }
+          : t
+      )
+    );
+    setAssigning(false);
   };
 
   const resolveThread = async () => {
@@ -202,6 +226,9 @@ export default function InboxPage() {
                           {t.needs_human && (
                             <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" title="Needs human" />
                           )}
+                          {t.assigned_to && (
+                            <span className="w-2 h-2 rounded-full bg-indigo-400 flex-shrink-0" title={`Assigned to ${t.assigned_to}`} />
+                          )}
                           <span className="text-xs text-gray-400">
                             {t.last_message_at ? timeAgo(t.last_message_at) : ""}
                           </span>
@@ -245,15 +272,56 @@ export default function InboxPage() {
                 </div>
               </div>
 
-              {selected.needs_human && (
-                <button
-                  onClick={resolveThread}
-                  disabled={resolving}
-                  className="rounded-full bg-green-600 px-4 py-2 text-xs font-semibold text-white hover:bg-green-700 transition-colors disabled:opacity-50"
-                >
-                  {resolving ? "Resolving..." : "Mark resolved"}
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {/* Assignment */}
+                <div className="flex items-center gap-1.5">
+                  {selected.assigned_to ? (
+                    <span className="flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700">
+                      <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      {selected.assigned_to}
+                      <button
+                        onClick={() => { setAssignInput(""); void assignThread(null); }}
+                        disabled={assigning}
+                        className="ml-0.5 hover:text-red-500 transition-colors"
+                        title="Unassign"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="text"
+                        value={assignInput}
+                        onChange={(e) => setAssignInput(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && assignInput.trim() && void assignThread(assignInput.trim())}
+                        placeholder="Assign to..."
+                        className="w-28 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-slate-400"
+                      />
+                      {assignInput.trim() && (
+                        <button
+                          onClick={() => void assignThread(assignInput.trim())}
+                          disabled={assigning}
+                          className="rounded-full bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                        >
+                          {assigning ? "..." : "Assign"}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {selected.needs_human && (
+                  <button
+                    onClick={resolveThread}
+                    disabled={resolving}
+                    className="rounded-full bg-green-600 px-4 py-2 text-xs font-semibold text-white hover:bg-green-700 transition-colors disabled:opacity-50"
+                  >
+                    {resolving ? "Resolving..." : "Mark resolved"}
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Messages */}

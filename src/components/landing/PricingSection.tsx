@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { MONTHLY_PLANS, MonthlyTier, SETUP_FEE } from "@/types";
 import { trackEvent } from "@/lib/analytics";
@@ -24,32 +24,34 @@ const planDetails: Record<
       "15 contact хүртэл",
       "Keyword trigger автоматжуулалт",
       "Үндсэн dashboard",
-      "Nexon Chat брэндинг орно",
+      "Nexon брэндинг орно",
     ],
     featuresEn: [
       "1 channel (Instagram or Messenger)",
       "Up to 15 contacts",
       "Keyword trigger automation",
       "Basic dashboard",
-      "Nexon Chat branding included",
+      "Nexon branding included",
     ],
   },
   starter: {
     audienceMn: "Эхэлж байгаа жижиг бизнест",
     audienceEn: "For small businesses getting started",
     featuresMn: [
+      "Free-ийн бүгд, нэмэлтээр:",
       "Instagram + Messenger + Telegram",
       "150 contact хүртэл",
       "AI автомат хариулт (24/7)",
-      "Keyword triggers + sequences",
+      "Sequences",
       "Брэндинг байхгүй",
       "И-мэйл дэмжлэг",
     ],
     featuresEn: [
+      "Everything in Free, plus:",
       "Instagram + Messenger + Telegram",
       "Up to 150 contacts",
       "AI auto-replies (24/7)",
-      "Keyword triggers + sequences",
+      "Sequences",
       "No branding",
       "Email support",
     ],
@@ -58,63 +60,61 @@ const planDetails: Record<
     audienceMn: "Тогтмол чат авдаг бизнест",
     audienceEn: "For businesses with steady daily messages",
     featuresMn: [
-      "Instagram + Messenger + Telegram",
+      "Starter-ийн бүгд, нэмэлтээр:",
       "1,500 contact хүртэл",
       "Broadcast илгээлт",
-      "Дэвшилтэт автоматжуулалт",
+      "Flow builder",
+      "Comment-to-DM автоматжуулалт",
       "2 хэрэглэгчийн эрх",
       "Гэнэтийн нэмэлт төлбөргүй",
-      "И-мэйл дэмжлэг (хурдан)",
     ],
     featuresEn: [
-      "Instagram + Messenger + Telegram",
+      "Everything in Starter, plus:",
       "Up to 1,500 contacts",
       "Broadcasts",
-      "Advanced automations",
+      "Flow builder",
+      "Comment-to-DM automation",
       "2 user seats",
       "Fixed price, no surprise bills",
-      "Fast email support",
     ],
   },
   pro: {
     audienceMn: "Борлуулалтын идэвхтэй багт",
     audienceEn: "For active sales teams",
     featuresMn: [
-      "Instagram + Messenger + Telegram",
+      "Growth-ийн бүгд, нэмэлтээр:",
       "4,500 contact хүртэл",
       "5 хэрэглэгчийн эрх",
       "Дэлгэрэнгүй аналитик",
-      "Sequence + Flow builder",
-      "Гэнэтийн нэмэлт төлбөргүй",
-      "Шууд холбоо барих дэмжлэг",
+      "Дансны Telegram мэдэгдэл",
+      "Шууд дэмжлэг (бодит хүн)",
     ],
     featuresEn: [
-      "Instagram + Messenger + Telegram",
+      "Everything in Growth, plus:",
       "Up to 4,500 contacts",
       "5 user seats",
       "Advanced analytics",
-      "Sequences + Flow builder",
-      "Fixed price, no surprise bills",
-      "Live support — real human, fast response",
+      "Account Telegram notifications",
+      "Live support — real human",
     ],
   },
   enterprise: {
     audienceMn: "Custom rollout хэрэгтэй байгууллагад",
     audienceEn: "For organizations needing a custom rollout",
     featuresMn: [
-      "Хязгааргүй contact",
-      "Instagram + Messenger + Telegram",
+      "Pro-ийн бүгд, нэмэлтээр:",
+      "15,000 contact хүртэл",
+      "Хязгааргүй хэрэглэгчийн эрх",
       "Custom workflow дизайн",
       "Тусгай onboarding & setup",
-      "Гэнэтийн нэмэлт төлбөргүй",
       "Хамгийн өндөр дэмжлэг (шууд)",
     ],
     featuresEn: [
-      "Unlimited contacts",
-      "Instagram + Messenger + Telegram",
+      "Everything in Pro, plus:",
+      "Up to 15,000 contacts",
+      "Unlimited user seats",
       "Custom workflow design",
       "Dedicated onboarding & setup",
-      "Fixed price, no surprise bills",
       "Highest priority live support",
     ],
   },
@@ -124,6 +124,7 @@ export default function PricingSection() {
   const { lang, t } = useLanguage();
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-60px" });
+  const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
 
   const subtitle =
     lang === "mn"
@@ -147,7 +148,34 @@ export default function PricingSection() {
           </h2>
           <p className="mt-5 text-lg leading-8 text-slate-600">{subtitle}</p>
 
-          <div className="mt-6 inline-flex rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">
+          {/* Billing toggle */}
+          <div className="mt-8 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 p-1">
+            <button
+              onClick={() => setBilling("monthly")}
+              className={`rounded-full px-5 py-2 text-sm font-semibold transition-all ${
+                billing === "monthly"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              {lang === "mn" ? "Сарын" : "Monthly"}
+            </button>
+            <button
+              onClick={() => setBilling("annual")}
+              className={`flex items-center gap-2 rounded-full px-5 py-2 text-sm font-semibold transition-all ${
+                billing === "annual"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              {lang === "mn" ? "Жилийн" : "Annual"}
+              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">
+                {lang === "mn" ? "-20%" : "Save 20%"}
+              </span>
+            </button>
+          </div>
+
+          <div className="mt-4 inline-flex rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">
             {lang === "mn"
               ? `Нэг удаагийн setup fee: ${SETUP_FEE.toLocaleString()}₮ (Starter болон дээш)`
               : `One-time setup fee: ${SETUP_FEE.toLocaleString()}₮ (Starter and above)`}
@@ -160,6 +188,7 @@ export default function PricingSection() {
             const audience = lang === "mn" ? details.audienceMn : details.audienceEn;
             const features = lang === "mn" ? details.featuresMn : details.featuresEn;
             const planName = lang === "mn" ? plan.nameMn : plan.nameEn;
+            const displayPrice = billing === "annual" ? plan.annualPrice : plan.price;
             const contactLabel =
               lang === "mn"
                 ? `${plan.contactLimit.toLocaleString()} contact/сар`
@@ -199,9 +228,19 @@ export default function PricingSection() {
                     ) : (
                       <div>
                         <div className="flex items-end gap-1.5">
-                          <span className="text-3xl font-black text-slate-900">{plan.price.toLocaleString()}</span>
-                          <span className="pb-1 text-xs text-slate-400">₮/{t("pricing_per_month")}</span>
+                          <span className="text-3xl font-black text-slate-900">{displayPrice.toLocaleString()}</span>
+                          <span className="pb-1 text-xs text-slate-400">
+                            ₮/{t("pricing_per_month")}
+                            {billing === "annual" && (
+                              <span className="ml-1 text-slate-300">
+                                {lang === "mn" ? "(жилд тооцно)" : "(billed annually)"}
+                              </span>
+                            )}
+                          </span>
                         </div>
+                        {billing === "annual" && plan.price > 0 && (
+                          <p className="mt-0.5 text-xs text-slate-400 line-through">{plan.price.toLocaleString()}₮</p>
+                        )}
                         <p className="mt-1.5 text-xs text-slate-500">{contactLabel}</p>
                       </div>
                     )}
@@ -222,11 +261,12 @@ export default function PricingSection() {
 
                   <div className="mt-6">
                     <Link
-                      href={`/register?plan=${plan.tier}&source=pricing`}
+                      href={`/register?plan=${plan.tier}&billing=${billing}&source=pricing`}
                       onClick={() =>
                         trackEvent("pricing_plan_cta_click", {
                           tier: plan.tier,
-                          amount: plan.price,
+                          amount: displayPrice,
+                          billing,
                           source: "pricing_section",
                         })
                       }
@@ -248,6 +288,18 @@ export default function PricingSection() {
             );
           })}
         </div>
+
+        {billing === "annual" && (
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mt-6 text-center text-sm text-slate-500"
+          >
+            {lang === "mn"
+              ? "Жилийн төлбөрөөр нийт дүнг нэг удаа тооцно. 14 хоногийн туршилтын хугацаа орно."
+              : "Annual plans are billed as one yearly payment. Includes a 14-day free trial."}
+          </motion.p>
+        )}
       </div>
     </section>
   );

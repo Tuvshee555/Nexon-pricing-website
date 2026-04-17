@@ -21,8 +21,9 @@ function RegisterForm() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
   const requestedTier = searchParams.get("plan") as MonthlyTier | null;
+  const requestedBilling = searchParams.get("billing") === "annual" ? "annual" : "monthly";
   const selectedPlan = requestedTier ? MONTHLY_PLANS.find((plan) => plan.tier === requestedTier) : null;
-  const setupTarget = selectedPlan ? `/dashboard/setup?plan=${selectedPlan.tier}` : "/dashboard";
+  const setupTarget = selectedPlan ? `/dashboard/setup?plan=${selectedPlan.tier}&billing=${requestedBilling}` : "/dashboard";
   const loginHref = selectedPlan ? `/login?plan=${selectedPlan.tier}` : "/login";
 
   const copy =
@@ -162,10 +163,27 @@ function RegisterForm() {
             <h1 className="mt-5 text-4xl font-black tracking-[-0.04em] text-slate-950">{copy.title}</h1>
             <p className="mt-4 text-base leading-7 text-slate-600">{copy.subtitle}</p>
             {selectedPlan && (
-              <div className="mt-5 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-                {lang === "mn"
-                  ? `Сонгосон багц: ${selectedPlan.nameMn} (${selectedPlan.price.toLocaleString()}₮ / сар)`
-                  : `Selected plan: ${selectedPlan.nameEn} (${selectedPlan.price.toLocaleString()}₮ / month)`}
+              <div className="mt-5 space-y-2">
+                <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                  {lang === "mn"
+                    ? `Сонгосон багц: ${selectedPlan.nameMn} — ${
+                        requestedBilling === "annual"
+                          ? `${selectedPlan.annualPrice.toLocaleString()}₮/сар (жилийн)`
+                          : `${selectedPlan.price.toLocaleString()}₮/сар`
+                      }`
+                    : `Selected plan: ${selectedPlan.nameEn} — ${
+                        requestedBilling === "annual"
+                          ? `${selectedPlan.annualPrice.toLocaleString()}₮/mo (billed annually)`
+                          : `${selectedPlan.price.toLocaleString()}₮/month`
+                      }`}
+                </div>
+                {selectedPlan.tier !== "free" && (
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                    {lang === "mn"
+                      ? "14 хоногийн үнэгүй туршилт — картын мэдээлэл шаардахгүй."
+                      : "14-day free trial included — no card required to start."}
+                  </div>
+                )}
               </div>
             )}
 

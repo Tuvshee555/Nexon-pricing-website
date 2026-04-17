@@ -34,8 +34,11 @@ async function handleBilling(request: NextRequest) {
 
     const dueBusinesses = await sql`
       SELECT id, name, virtual_balance, subscription_price, next_billing_date,
-             owner_telegram_chat_id, notify_payment, notify_bot_status
-      FROM businesses WHERE billing_active = true AND next_billing_date <= ${now}
+             owner_telegram_chat_id, notify_payment, notify_bot_status, trial_ends_at
+      FROM businesses
+      WHERE billing_active = true
+        AND next_billing_date <= ${now}
+        AND (trial_ends_at IS NULL OR trial_ends_at <= ${now})
     `;
 
     if (!dueBusinesses.length) return NextResponse.json({ success: true, processed: 0 });

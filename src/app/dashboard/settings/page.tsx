@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
 import { sql } from "@/lib/db";
 import BotConfigEditor from "@/components/dashboard/bot/BotConfigEditor";
-import { TelegramBotSection, NotificationSettingsSection } from "@/components/dashboard/settings/TelegramSettings";
+import { TelegramBotSection, NotificationSettingsSection, WhatsAppSection } from "@/components/dashboard/settings/TelegramSettings";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -57,6 +57,7 @@ export default async function SettingsPage() {
       </section>
 
       <div className="max-w-4xl space-y-6">
+        <WhatsAppSection />
         <TelegramBotSection />
         <NotificationSettingsSection />
       </div>

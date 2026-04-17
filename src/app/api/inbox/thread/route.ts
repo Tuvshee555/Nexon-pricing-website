@@ -19,7 +19,7 @@ export async function GET(request: Request) {
 
   const businessId = businesses[0].id as string;
   const rows = await sql`
-    SELECT sender_id, platform, messages, last_message_at
+    SELECT sender_id, platform, messages, last_message_at, assigned_to
     FROM conversation_threads
     WHERE business_id = ${businessId} AND sender_id = ${senderId} AND platform = ${platform}
     LIMIT 1

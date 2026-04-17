@@ -10,11 +10,12 @@ export async function POST(request: Request) {
 
   const userId = session.user.id;
   const body = await request.json();
-  const { businessName, businessType, contactPhone, contactEmail } = body as {
+  const { businessName, businessType, contactPhone, contactEmail, plan } = body as {
     businessName?: string;
     businessType?: string;
     contactPhone?: string;
     contactEmail?: string;
+    plan?: string;
   };
 
   if (!businessName || typeof businessName !== "string" || businessName.trim().length < 1) {
@@ -46,13 +47,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ businessId: existing.id });
   }
 
+  const isPaidPlan = plan && plan !== "free";
+  const trialEndsAt = isPaidPlan
+    ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+    : null;
+
   const [newBiz] = await sql`
     INSERT INTO businesses (
       user_id, name, business_type, platforms, bot_prompt,
-      contact_phone, contact_email, status, onboarding_step, onboarding_done
+      contact_phone, contact_email, status, onboarding_step, onboarding_done,
+      trial_ends_at
     ) VALUES (
       ${userId}, ${businessName.trim()}, ${businessType || "other"}, '{}', '',
-      ${contactPhone?.trim() || ""}, ${contactEmail?.trim() || ""}, 'paused', 1, false
+      ${contactPhone?.trim() || ""}, ${contactEmail?.trim() || ""}, 'paused', 1, false,
+      ${trialEndsAt}
     ) RETURNING id
   `;
 

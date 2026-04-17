@@ -22,6 +22,7 @@ export async function GET(request: Request) {
       ct.last_message_at,
       ct.needs_human,
       ct.resolved_at,
+      ct.assigned_to,
       jsonb_array_length(ct.messages::jsonb) AS message_count,
       (ct.messages::jsonb -> -1 -> 'content')::text AS last_message,
       COALESCE(

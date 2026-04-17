@@ -21,6 +21,7 @@ interface Props {
   messagesThisMonth: number;
   recentTransactions: RecentTransaction[];
   showWelcome: boolean;
+  trialEndsAt?: string | null;
 }
 
 const TX_TYPE_LABEL: Record<string, string> = {
@@ -36,6 +37,7 @@ export default function ClientDashboard({
   messagesThisMonth,
   recentTransactions,
   showWelcome,
+  trialEndsAt,
 }: Props) {
   const monthlyPlan =
     plan?.plan_type === "monthly"
@@ -121,6 +123,27 @@ export default function ClientDashboard({
           Welcome aboard. Your workspace is ready and the first dashboard view is live.
         </div>
       )}
+      {trialEndsAt && new Date(trialEndsAt) > new Date() && (() => {
+        const daysLeft = Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+        return (
+          <div className="flex flex-col gap-3 rounded-[26px] border border-violet-200 bg-violet-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-bold text-violet-900">
+                Free trial — {daysLeft} day{daysLeft !== 1 ? "s" : ""} remaining
+              </p>
+              <p className="mt-0.5 text-xs text-violet-700">
+                Your trial ends on {new Date(trialEndsAt).toLocaleDateString()}. Add a payment method before then to keep your bot running.
+              </p>
+            </div>
+            <Link
+              href="/dashboard/billing"
+              className="inline-flex items-center justify-center rounded-full bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-700 whitespace-nowrap"
+            >
+              Add payment method
+            </Link>
+          </div>
+        );
+      })()}
 
       <div className="surface-card rounded-[32px] p-6 sm:p-7">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">

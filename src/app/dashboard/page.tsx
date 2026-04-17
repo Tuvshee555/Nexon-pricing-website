@@ -46,6 +46,8 @@ export default async function DashboardPage({
   const plan = plans[0] ?? null;
   const messagesThisMonth = monthlyLogs.reduce((sum, l) => sum + (l.message_count as number), 0);
 
+  const trialEndsAt = (business.trial_ends_at as string | null) ?? null;
+
   return (
     <ClientDashboard
       business={business as unknown as Business}
@@ -54,6 +56,7 @@ export default async function DashboardPage({
       messagesThisMonth={messagesThisMonth}
       recentTransactions={recentTransactions as unknown as { id: string; amount: number; credits_added: number; transaction_type?: string; status: string; paid_at?: string }[]}
       showWelcome={!!params.welcome}
+      trialEndsAt={trialEndsAt}
     />
   );
 }
