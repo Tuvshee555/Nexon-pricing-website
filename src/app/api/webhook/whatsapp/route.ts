@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY!;
+const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
+
 // WhatsApp webhook verification (GET)
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -99,20 +102,22 @@ export async function POST(request: NextRequest) {
           }
 
           if (!replied && account.bot_prompt) {
-            // Use OpenAI for AI reply (same pattern as other webhooks)
-            const { OpenAI } = await import("openai");
-            const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-            const completion = await openai.chat.completions.create({
-              model: "gpt-4o-mini",
-              messages: [
-                { role: "system", content: account.bot_prompt as string },
-                { role: "user", content: text },
-              ],
-              max_tokens: 400,
+            const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+              method: "POST",
+              headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+              body: JSON.stringify({
+                model: OPENAI_MODEL,
+                messages: [
+                  { role: "system", content: account.bot_prompt as string },
+                  { role: "user", content: text },
+                ],
+                max_tokens: 400,
+              }),
             });
 
-            const aiReply = completion.choices[0]?.message?.content ?? "Sorry, I could not process your message.";
+            if (!openaiRes.ok) continue;
+            const openaiData = await openaiRes.json() as { choices?: Array<{ message?: { content?: string } }> };
+            const aiReply = openaiData.choices?.[0]?.message?.content ?? "";
             await sendWhatsAppMessage(phoneNumberId, senderId, aiReply, accessToken);
 
             // Save conversation thread
