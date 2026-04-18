@@ -51,8 +51,7 @@ export async function POST(request: Request) {
     });
 
     if (!result.ok) {
-      // Non-blocking fallback
-      console.log(`Password reset link fallback for ${normalizedEmail}: ${resetUrl}`);
+      // Email delivery failed — token is saved in DB so user can retry
     }
 
     return NextResponse.json({ success: true });

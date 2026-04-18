@@ -25,8 +25,8 @@ export default function BroadcastsPage() {
   const [sending, setSending] = useState(false);
   const [showCompose, setShowCompose] = useState(false);
   const [contactCount, setContactCount] = useState(0);
-  const [form, setForm] = useState({ message: "", platform: "all" });
-  const [result, setResult] = useState<{ sentCount: number } | null>(null);
+  const [form, setForm] = useState({ message: "", platform: "all", scheduledAt: "" });
+  const [result, setResult] = useState<{ sentCount?: number; scheduled?: boolean } | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -43,15 +43,17 @@ export default function BroadcastsPage() {
     if (!form.message.trim()) return;
     setSending(true);
     setResult(null);
+    const payload: Record<string, string> = { message: form.message, platform: form.platform };
+    if (form.scheduledAt) payload.scheduledAt = new Date(form.scheduledAt).toISOString();
     const res = await fetch("/api/broadcasts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: form.message, platform: form.platform }),
+      body: JSON.stringify(payload),
     });
-    const data = await res.json();
+    const data = await res.json() as { success?: boolean; sentCount?: number; scheduled?: boolean };
     if (data.success) {
-      setResult({ sentCount: data.sentCount });
-      setForm({ message: "", platform: "all" });
+      setResult(data.scheduled ? { scheduled: true } : { sentCount: data.sentCount });
+      setForm({ message: "", platform: "all", scheduledAt: "" });
       // Refresh list
       const bd = await fetch("/api/broadcasts").then((r) => r.json());
       setBroadcasts(bd.broadcasts || []);
@@ -109,7 +111,9 @@ export default function BroadcastsPage() {
               </svg>
             </div>
             <p className="text-sm font-semibold text-green-800">
-              Broadcast sent successfully to {result.sentCount} contacts!
+              {result.scheduled
+                ? "Broadcast scheduled! It will be sent automatically at the chosen time."
+                : `Broadcast sent successfully to ${result.sentCount} contacts!`}
             </p>
           </div>
         )}
@@ -152,6 +156,19 @@ export default function BroadcastsPage() {
               <p className="text-xs text-gray-400 mt-1">{form.message.length} characters</p>
             </div>
 
+            {/* Schedule */}
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-gray-600 mb-2">
+                Schedule (optional — leave blank to send immediately)
+              </label>
+              <input
+                type="datetime-local"
+                value={form.scheduledAt}
+                onChange={(e) => setForm({ ...form, scheduledAt: e.target.value })}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-3 text-sm focus:outline-none focus:border-indigo-400"
+              />
+            </div>
+
             {/* Audience preview */}
             <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-5 flex items-center gap-3">
               <svg className="w-5 h-5 text-indigo-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -180,9 +197,9 @@ export default function BroadcastsPage() {
                 ) : (
                   <>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={form.scheduledAt ? "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" : "M12 19l9 2-9-18-9 18 9-2zm0 0v-8"} />
                     </svg>
-                    Send broadcast
+                    {form.scheduledAt ? "Schedule broadcast" : "Send broadcast"}
                   </>
                 )}
               </button>

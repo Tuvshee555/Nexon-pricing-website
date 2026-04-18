@@ -15,7 +15,7 @@ export default async function SettingsPage() {
   const userId = session.user.id;
 
   const businesses = await sql`
-    SELECT id, name, bot_name, bot_prompt, knowledge_json, welcome_message, bot_tone, status, platforms
+    SELECT id, name, bot_name, bot_prompt, knowledge_json, welcome_message, bot_tone, status, platforms, ai_agent_mode, story_reply_auto_dm
     FROM businesses WHERE user_id = ${userId} LIMIT 1
   `;
   const business = businesses[0] ?? null;
@@ -71,6 +71,8 @@ export default async function SettingsPage() {
           botTone={(business.bot_tone as string) || "friendly"}
           status={business.status as string}
           knowledgeLoaded={!!business.knowledge_json}
+          aiAgentMode={Boolean(business.ai_agent_mode)}
+          storyReplyAutoDm={(business.story_reply_auto_dm as string) || ""}
           platformAccounts={
             platformAccounts as {
               id: string;
@@ -82,7 +84,37 @@ export default async function SettingsPage() {
           }
         />
       </div>
+
+      {/* Website Widget Embed Code */}
+      <div className="max-w-4xl">
+        <WidgetEmbedSection businessId={business.id as string} />
+      </div>
     </div>
+  );
+}
+
+function WidgetEmbedSection({ businessId }: { businessId: string }) {
+  const appUrl = process.env.NEXTAUTH_URL || "https://your-nexon-domain.com";
+  const snippet = `<script>
+  window.NexonBusinessId = "${businessId}";
+  window.NexonWidgetBase = "${appUrl}";
+</script>
+<script src="${appUrl}/widget.js" async></script>`;
+
+  return (
+    <section className="rounded-[30px] border border-slate-200 bg-white p-6 shadow-sm">
+      <p className="section-label">Website Widget</p>
+      <h2 className="mt-4 text-2xl font-black tracking-[-0.03em] text-slate-950">
+        Add a chat bubble to your website
+      </h2>
+      <p className="mt-3 text-sm leading-7 text-slate-600">
+        Paste this snippet before the <code className="rounded bg-slate-100 px-1 py-0.5 text-xs">&lt;/body&gt;</code> tag on any page.
+        Visitors can chat and their messages are handled by your AI bot.
+      </p>
+      <pre className="mt-4 overflow-x-auto rounded-2xl bg-slate-900 px-5 py-4 text-xs text-emerald-300 leading-6 font-mono whitespace-pre-wrap">
+        {snippet}
+      </pre>
+    </section>
   );
 }
 

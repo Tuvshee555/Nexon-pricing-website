@@ -1,7 +1,8 @@
-const BASE_URL = process.env.QPAY_BASE_URL!;
-const USERNAME = process.env.QPAY_USERNAME!;
-const PASSWORD = process.env.QPAY_PASSWORD!;
-const INVOICE_CODE = process.env.QPAY_INVOICE_CODE!;
+function requireEnv(name: string): string {
+  const val = process.env[name];
+  if (!val) throw new Error(`Missing env var: ${name}`);
+  return val;
+}
 
 interface QPayToken {
   access_token: string;
@@ -14,6 +15,10 @@ async function getToken(): Promise<string> {
   if (tokenCache && tokenCache.expiresAt > Date.now() + 60000) {
     return tokenCache.token;
   }
+
+  const BASE_URL = requireEnv("QPAY_BASE_URL");
+  const USERNAME = requireEnv("QPAY_USERNAME");
+  const PASSWORD = requireEnv("QPAY_PASSWORD");
 
   const res = await fetch(`${BASE_URL}/auth/token`, {
     method: "POST",
@@ -50,6 +55,7 @@ export async function createInvoice(params: {
 }): Promise<QPayInvoice> {
   const token = await getToken();
 
+  const BASE_URL = requireEnv("QPAY_BASE_URL");
   const res = await fetch(`${BASE_URL}/invoice`, {
     method: "POST",
     headers: {
@@ -57,7 +63,7 @@ export async function createInvoice(params: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      invoice_code: INVOICE_CODE,
+      invoice_code: requireEnv("QPAY_INVOICE_CODE"),
       sender_invoice_no: params.senderInvoiceNo,
       invoice_receiver_code: "terminal",
       invoice_description: params.description,
@@ -87,6 +93,7 @@ export interface QPayPaymentCheck {
 
 export async function checkPayment(invoiceId: string): Promise<QPayPaymentCheck> {
   const token = await getToken();
+  const BASE_URL = requireEnv("QPAY_BASE_URL");
 
   const res = await fetch(`${BASE_URL}/payment/check`, {
     method: "POST",

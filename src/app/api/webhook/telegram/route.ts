@@ -3,6 +3,7 @@ import { sql } from "@/lib/db";
 import { appendKnowledgeSection } from "@/lib/bot-prompt";
 import { sendTelegramBotMessage } from "@/lib/telegram-bot";
 import { logMessageDelivery } from "@/lib/meta";
+import { fireWebhooks } from "@/lib/webhooks";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY!;
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
@@ -54,10 +55,10 @@ export async function POST(request: Request) {
     const platform = "telegram";
 
     const [businesses, plans, threads, keywordTriggers] = await Promise.all([
-      sql`SELECT bot_prompt, status, knowledge_json, billing_active FROM businesses WHERE id = ${businessId} LIMIT 1`,
+      sql`SELECT bot_prompt, status, knowledge_json, billing_active, ai_agent_mode FROM businesses WHERE id = ${businessId} LIMIT 1`,
       sql`SELECT plan_type, tier FROM plans WHERE business_id = ${businessId} LIMIT 1`,
       sql`
-        SELECT messages FROM conversation_threads
+        SELECT messages, paused_until FROM conversation_threads
         WHERE business_id = ${businessId} AND platform = ${platform} AND sender_id = ${senderId}
         LIMIT 1
       `,
@@ -79,8 +80,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    // Pause check
+    const pausedUntil = threads[0]?.paused_until as string | null;
+    if (pausedUntil && new Date(pausedUntil) > new Date()) {
+      return NextResponse.json({ ok: true });
+    }
+
+    // Fire new_contact on first message
+    const history = Array.isArray(threads[0]?.messages)
+      ? (threads[0].messages as Array<{ role: string; content: string }>)
+      : [];
+    if (history.length === 0) {
+      await fireWebhooks(businessId, "new_contact", { senderId, platform });
+    }
+
+    const aiAgentMode = Boolean(business.ai_agent_mode);
     const triggers = keywordTriggers as KWTrigger[];
-    const matchedTrigger = matchKeyword(messageText, triggers);
+    const matchedTrigger = aiAgentMode ? null : matchKeyword(messageText, triggers);
 
     if (matchedTrigger) {
       await sendTelegramBotMessage({ botToken, chatId, text: matchedTrigger.response });
@@ -108,9 +124,6 @@ export async function POST(request: Request) {
       (business.bot_prompt as string) || "Та туслах AI байна.",
       business.knowledge_json
     );
-    const history = Array.isArray(threads[0]?.messages)
-      ? (threads[0].messages as Array<{ role: string; content: string }>)
-      : [];
     const recentContext = history.slice(-20);
 
     const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -144,7 +157,7 @@ export async function POST(request: Request) {
       });
 
       const updatedMessages = [
-        ...recentContext,
+        ...history,
         { role: "user", content: messageText },
         { role: "assistant", content: reply },
       ].slice(-100);
@@ -155,6 +168,8 @@ export async function POST(request: Request) {
         ON CONFLICT (business_id, platform, sender_id)
         DO UPDATE SET messages = ${JSON.stringify(updatedMessages)}, last_message_at = NOW()
       `;
+
+      await fireWebhooks(businessId, "message_received", { senderId, platform, text: messageText });
     }
 
     return NextResponse.json({ ok: true });

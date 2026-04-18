@@ -10,6 +10,7 @@ interface Thread {
   needs_human?: boolean;
   resolved_at?: string | null;
   assigned_to?: string | null;
+  paused_until?: string | null;
   messages: Array<{ role: string; content: string }>;
 }
 
@@ -28,6 +29,7 @@ export default function InboxPage() {
   const [resolving, setResolving] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const [assignInput, setAssignInput] = useState("");
+  const [pausing, setPausing] = useState(false);
 
   useEffect(() => {
     fetch("/api/contacts")
@@ -45,7 +47,12 @@ export default function InboxPage() {
       const meta = threads.find(
         (t) => t.sender_id === contact.sender_id && t.platform === contact.platform
       );
-      const thread = { ...data.thread, needs_human: meta?.needs_human, resolved_at: meta?.resolved_at };
+      const thread = {
+        ...data.thread,
+        needs_human: meta?.needs_human,
+        resolved_at: meta?.resolved_at,
+        paused_until: meta?.paused_until,
+      };
       setSelected(thread);
       setAssignInput(thread.assigned_to ?? "");
     } else {
@@ -53,6 +60,46 @@ export default function InboxPage() {
       setAssignInput("");
     }
   };
+
+  const pauseBot = async (durationMinutes: number) => {
+    if (!selected) return;
+    setPausing(true);
+    const res = await fetch("/api/inbox/pause", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ senderId: selected.sender_id, platform: selected.platform, durationMinutes }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      const pausedUntil = data.pausedUntil as string;
+      setSelected((prev) => prev ? { ...prev, paused_until: pausedUntil } : prev);
+      setThreads((prev) =>
+        prev.map((t) =>
+          t.sender_id === selected.sender_id && t.platform === selected.platform
+            ? { ...t, paused_until: pausedUntil }
+            : t
+        )
+      );
+    }
+    setPausing(false);
+  };
+
+  const resumeBot = async () => {
+    if (!selected) return;
+    setPausing(true);
+    await fetch(`/api/inbox/pause?senderId=${selected.sender_id}&platform=${selected.platform}`, { method: "DELETE" });
+    setSelected((prev) => prev ? { ...prev, paused_until: null } : prev);
+    setThreads((prev) =>
+      prev.map((t) =>
+        t.sender_id === selected.sender_id && t.platform === selected.platform
+          ? { ...t, paused_until: null }
+          : t
+      )
+    );
+    setPausing(false);
+  };
+
+  const isBotPaused = (t: Thread) => Boolean(t.paused_until && new Date(t.paused_until) > new Date());
 
   const assignThread = async (assignedTo: string | null) => {
     if (!selected) return;
@@ -226,6 +273,9 @@ export default function InboxPage() {
                           {t.needs_human && (
                             <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" title="Needs human" />
                           )}
+                          {isBotPaused(t) && (
+                            <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" title="Bot paused" />
+                          )}
                           {t.assigned_to && (
                             <span className="w-2 h-2 rounded-full bg-indigo-400 flex-shrink-0" title={`Assigned to ${t.assigned_to}`} />
                           )}
@@ -260,6 +310,11 @@ export default function InboxPage() {
                         Needs human
                       </span>
                     )}
+                    {isBotPaused(selected) && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+                        Bot paused
+                      </span>
+                    )}
                     {selected.resolved_at && !selected.needs_human && (
                       <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
                         Resolved
@@ -273,6 +328,36 @@ export default function InboxPage() {
               </div>
 
               <div className="flex items-center gap-2">
+                {/* Pause / Resume bot */}
+                {isBotPaused(selected) ? (
+                  <button
+                    onClick={resumeBot}
+                    disabled={pausing}
+                    className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100 transition-colors disabled:opacity-50"
+                  >
+                    {pausing ? "..." : "Resume AI"}
+                  </button>
+                ) : (
+                  <div className="relative group">
+                    <button
+                      disabled={pausing}
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
+                    >
+                      {pausing ? "..." : "Pause AI ▾"}
+                    </button>
+                    <div className="absolute right-0 top-full mt-1 hidden group-hover:flex flex-col gap-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-lg z-10 min-w-[130px]">
+                      {[30, 60, 120].map((mins) => (
+                        <button
+                          key={mins}
+                          onClick={() => void pauseBot(mins)}
+                          className="rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 text-left whitespace-nowrap"
+                        >
+                          {mins < 60 ? `${mins} min` : `${mins / 60}h`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {/* Assignment */}
                 <div className="flex items-center gap-1.5">
                   {selected.assigned_to ? (

@@ -226,6 +226,118 @@ CREATE POLICY "plans_write_own" ON plans
   );
 
 -- ============================================================
+-- FEATURE ADDITIONS (Features 1–12)
+-- ============================================================
+
+-- Fix conversation_threads platform constraint to include all platforms
+ALTER TABLE public.conversation_threads
+  DROP CONSTRAINT IF EXISTS conversation_threads_platform_check;
+ALTER TABLE public.conversation_threads
+  ADD CONSTRAINT conversation_threads_platform_check
+  CHECK (platform IN ('instagram', 'messenger', 'whatsapp', 'telegram', 'website'));
+
+-- Feature 3: Pause bot per contact
+ALTER TABLE public.conversation_threads
+  ADD COLUMN IF NOT EXISTS paused_until TIMESTAMPTZ;
+
+-- Feature 10: AI Agent mode (skip keyword rules, full GPT)
+ALTER TABLE public.businesses
+  ADD COLUMN IF NOT EXISTS ai_agent_mode BOOLEAN NOT NULL DEFAULT false;
+
+-- Feature 2: Story Reply auto-DM message
+ALTER TABLE public.businesses
+  ADD COLUMN IF NOT EXISTS story_reply_auto_dm TEXT;
+
+-- Feature 4: Broadcast scheduling
+ALTER TABLE public.broadcasts
+  ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ;
+
+-- Feature 5: Outbound webhook endpoints (Zapier-like)
+CREATE TABLE IF NOT EXISTS public.webhook_endpoints (
+  id          UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  business_id UUID        NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  url         TEXT        NOT NULL,
+  events      TEXT[]      NOT NULL DEFAULT '{}',
+  secret      TEXT,
+  enabled     BOOLEAN     NOT NULL DEFAULT true,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_webhook_endpoints_business
+  ON public.webhook_endpoints(business_id);
+
+-- Feature 7: Flow executions for in-flow payment nodes
+CREATE TABLE IF NOT EXISTS public.flow_executions (
+  id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  business_id     UUID        NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  flow_id         UUID        NOT NULL,
+  sender_id       TEXT        NOT NULL,
+  platform        TEXT        NOT NULL,
+  current_node_id TEXT        NOT NULL,
+  state           JSONB       NOT NULL DEFAULT '{}',
+  status          TEXT        NOT NULL DEFAULT 'running'
+    CHECK (status IN ('running', 'waiting_payment', 'completed', 'failed')),
+  qpay_invoice_id TEXT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_flow_executions_business
+  ON public.flow_executions(business_id, status);
+CREATE INDEX IF NOT EXISTS idx_flow_executions_qpay
+  ON public.flow_executions(qpay_invoice_id) WHERE qpay_invoice_id IS NOT NULL;
+
+-- Feature 8: Team members with invite system
+CREATE TABLE IF NOT EXISTS public.team_members (
+  id           UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  business_id  UUID        NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  email        TEXT        NOT NULL,
+  name         TEXT        NOT NULL DEFAULT '',
+  role         TEXT        NOT NULL DEFAULT 'support'
+    CHECK (role IN ('owner', 'support', 'growth', 'viewer')),
+  invite_token TEXT        UNIQUE,
+  status       TEXT        NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending', 'active', 'removed')),
+  user_id      UUID,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(business_id, email)
+);
+
+-- Feature 9: Website widget sessions
+CREATE TABLE IF NOT EXISTS public.widget_sessions (
+  id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  business_id     UUID        NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  session_id      TEXT        NOT NULL,
+  visitor_name    TEXT,
+  messages        JSONB       NOT NULL DEFAULT '[]',
+  last_message_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(business_id, session_id)
+);
+CREATE INDEX IF NOT EXISTS idx_widget_sessions_business
+  ON public.widget_sessions(business_id, last_message_at DESC);
+
+-- Feature 11: Agency/reseller support
+ALTER TABLE public.businesses
+  ADD COLUMN IF NOT EXISTS agency_id UUID REFERENCES businesses(id) ON DELETE SET NULL;
+ALTER TABLE public.users
+  ADD COLUMN IF NOT EXISTS is_agency BOOLEAN NOT NULL DEFAULT false;
+
+-- Feature 12: Product catalog for WhatsApp
+CREATE TABLE IF NOT EXISTS public.products (
+  id          UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  business_id UUID        NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  name        TEXT        NOT NULL,
+  description TEXT,
+  price       INTEGER     NOT NULL DEFAULT 0,
+  image_url   TEXT,
+  sku         TEXT,
+  currency    TEXT        NOT NULL DEFAULT 'MNT',
+  enabled     BOOLEAN     NOT NULL DEFAULT true,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_products_business
+  ON public.products(business_id, enabled);
+
+-- ============================================================
 -- How to set up a client on the monthly plan:
 --
 -- UPDATE public.businesses SET

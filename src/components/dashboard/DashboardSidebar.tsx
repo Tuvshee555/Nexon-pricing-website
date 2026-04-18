@@ -60,6 +60,21 @@ const SettingsIcon = () => (
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8.5A3.5 3.5 0 1112 15.5 3.5 3.5 0 0112 8.5zm7.4 3.5a7.2 7.2 0 00-.08-1l2.03-1.58-1.92-3.32-2.46.69a7.5 7.5 0 00-1.73-1l-.37-2.5h-3.84l-.37 2.5c-.61.22-1.19.55-1.72.96l-2.46-.69-1.92 3.32 2.02 1.58c-.05.33-.08.67-.08 1 0 .34.03.68.08 1.01L2.5 14.59l1.92 3.32 2.46-.69c.53.41 1.11.73 1.72.96l.37 2.52h3.84l.37-2.52c.61-.23 1.19-.55 1.73-.96l2.46.69 1.92-3.32-2.03-1.58c.05-.33.08-.67.08-1.01z" />
   </svg>
 );
+const CatalogIcon = () => (
+  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+  </svg>
+);
+const WebhookIcon = () => (
+  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13 10V3L4 14h7v7l9-11h-7z" />
+  </svg>
+);
+const TeamIcon = () => (
+  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197" />
+  </svg>
+);
 
 export default function DashboardSidebar({ user, role }: Props) {
   const pathname = usePathname();
@@ -92,12 +107,15 @@ export default function DashboardSidebar({ user, role }: Props) {
         { href: "/dashboard/sequences", label: "Sequences", icon: <SequencesIcon /> },
         { href: "/dashboard/flows", label: "Flows", icon: <FlowsIcon /> },
         { href: "/dashboard/ai", label: "AI", icon: <AIIcon /> },
+        { href: "/dashboard/catalog", label: "Catalog", icon: <CatalogIcon /> },
       ],
     },
     {
       label: "Monitor",
       links: [
         { href: "/dashboard/analytics", label: "Analytics", icon: <AnalyticsIcon /> },
+        { href: "/dashboard/team", label: "Team", icon: <TeamIcon /> },
+        { href: "/dashboard/webhooks", label: "Webhooks", icon: <WebhookIcon /> },
         { href: "/dashboard/settings", label: "Settings", icon: <SettingsIcon /> },
       ],
     },

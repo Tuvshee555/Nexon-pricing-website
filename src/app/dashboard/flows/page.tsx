@@ -34,7 +34,7 @@ interface SequenceOption {
   name: string;
 }
 
-type FlowNodeKind = "trigger" | "message" | "condition" | "action";
+type FlowNodeKind = "trigger" | "message" | "condition" | "action" | "payment";
 
 interface FlowNodeData {
   [key: string]: unknown;
@@ -328,6 +328,9 @@ export default function FlowsPage() {
         break;
       case "condition":
         data = { title: "Condition", body: "Branch based on tag or reply" };
+        break;
+      case "payment":
+        data = { title: "QPay Payment", body: "Send QPay invoice and wait for payment", actionType: "add_tag", actionValue: "" };
         break;
       case "action":
       default:
@@ -643,6 +646,9 @@ export default function FlowsPage() {
                 </button>
                 <button onClick={() => addNode("action")} className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50">
                   Add Action
+                </button>
+                <button onClick={() => addNode("payment")} className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-100">
+                  + QPay Payment
                 </button>
               </div>
 

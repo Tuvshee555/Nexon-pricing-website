@@ -62,8 +62,25 @@ export default function ContactsPage() {
     filters: [emptyFilter()],
   });
   const [savingSegment, setSavingSegment] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ imported: number; skipped: number } | null>(null);
 
   const activeSegment = segments.find((segment) => segment.id === activeSegmentId) ?? null;
+
+  const handleCSVImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setImportResult(null);
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/contacts/import", { method: "POST", body: fd });
+    const data = await res.json() as { imported?: number; skipped?: number };
+    setImportResult({ imported: data.imported ?? 0, skipped: data.skipped ?? 0 });
+    setImporting(false);
+    void loadContacts(null);
+    e.target.value = "";
+  };
 
   const loadContacts = useCallback(async (segmentId: string | null = activeSegmentId) => {
     setLoadingContacts(true);
@@ -262,6 +279,10 @@ export default function ContactsPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
+            <label className={`cursor-pointer rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 ${importing ? "opacity-50" : ""}`}>
+              {importing ? "Importing..." : "Import CSV"}
+              <input type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => void handleCSVImport(e)} disabled={importing} />
+            </label>
             <Link href="/dashboard/automation" className="rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50">
               Review triggers
             </Link>
@@ -270,6 +291,12 @@ export default function ContactsPage() {
             </Link>
           </div>
         </div>
+
+        {importResult && (
+          <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 px-5 py-3 text-sm font-semibold text-green-800">
+            Imported {importResult.imported} contacts{importResult.skipped > 0 ? `, ${importResult.skipped} skipped` : ""}.
+          </div>
+        )}
 
         <div className="mt-6 grid gap-3 md:grid-cols-4">
           <MetricCard label="Total contacts" value={String(contactCount)} note="Across loaded data" />

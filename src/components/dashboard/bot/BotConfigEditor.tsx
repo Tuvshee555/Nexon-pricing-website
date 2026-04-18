@@ -20,6 +20,8 @@ interface Props {
   botTone: string;
   status: string;
   knowledgeLoaded: boolean;
+  aiAgentMode?: boolean;
+  storyReplyAutoDm?: string;
   platformAccounts: PlatformAccount[];
 }
 
@@ -31,6 +33,8 @@ export default function BotConfigEditor({
   botTone: initialTone,
   status: initialStatus,
   knowledgeLoaded: initialKnowledgeLoaded,
+  aiAgentMode: initialAiAgentMode = false,
+  storyReplyAutoDm: initialStoryReplyAutoDm = "",
   platformAccounts: initialPlatformAccounts,
 }: Props) {
   const [status, setStatus] = useState(initialStatus);
@@ -40,7 +44,47 @@ export default function BotConfigEditor({
   const [uploadingKnowledge, setUploadingKnowledge] = useState(false);
   const [removingKnowledge, setRemovingKnowledge] = useState(false);
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
+  const [aiAgentMode, setAiAgentMode] = useState(initialAiAgentMode);
+  const [togglingAI, setTogglingAI] = useState(false);
+  const [storyReplyAutoDm, setStoryReplyAutoDm] = useState(initialStoryReplyAutoDm);
+  const [savingStoryDm, setSavingStoryDm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const toggleAiAgentMode = async () => {
+    setTogglingAI(true);
+    try {
+      const next = !aiAgentMode;
+      const res = await fetch("/api/business/update-bot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ai_agent_mode: next }),
+      });
+      if (res.ok) {
+        setAiAgentMode(next);
+        toast.success(next ? "AI Agent mode enabled" : "AI Agent mode disabled");
+      }
+    } catch {
+      toast.error("Connection error");
+    } finally {
+      setTogglingAI(false);
+    }
+  };
+
+  const saveStoryReplyDm = async () => {
+    setSavingStoryDm(true);
+    try {
+      await fetch("/api/business/update-bot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ story_reply_auto_dm: storyReplyAutoDm }),
+      });
+      toast.success("Story reply DM saved");
+    } catch {
+      toast.error("Connection error");
+    } finally {
+      setSavingStoryDm(false);
+    }
+  };
 
   const handleToggleStatus = async () => {
     const nextStatus = status === "active" ? "paused" : "active";
@@ -263,6 +307,56 @@ export default function BotConfigEditor({
           <p className="text-xs text-slate-500">
             Upload a JSON file with business info, FAQs, pricing, and any other reference details.
           </p>
+        </div>
+      </div>
+
+      {/* AI Agent Mode */}
+      <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-base font-bold text-slate-950">AI Agent Mode</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              When enabled, the bot skips all keyword rules and lets GPT handle 100% of conversations using only your knowledge base.
+            </p>
+          </div>
+          <button
+            onClick={toggleAiAgentMode}
+            disabled={togglingAI}
+            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none disabled:opacity-50 ${
+              aiAgentMode ? "bg-slate-900" : "bg-slate-200"
+            }`}
+          >
+            <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ${aiAgentMode ? "translate-x-5" : "translate-x-0"}`} />
+          </button>
+        </div>
+        {aiAgentMode && (
+          <p className="mt-3 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+            AI Agent Mode is ON — keyword triggers are bypassed for all platforms.
+          </p>
+        )}
+      </div>
+
+      {/* Story Reply Auto-DM */}
+      <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 className="text-base font-bold text-slate-950">Instagram Story Reply Auto-DM</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          When someone replies to your Instagram story, automatically send them this DM. Leave blank to use normal AI/keyword handling.
+        </p>
+        <div className="mt-4 flex gap-3">
+          <input
+            type="text"
+            value={storyReplyAutoDm}
+            onChange={(e) => setStoryReplyAutoDm(e.target.value)}
+            placeholder="Thanks for replying to our story! How can we help?"
+            className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:border-slate-400"
+          />
+          <button
+            onClick={saveStoryReplyDm}
+            disabled={savingStoryDm}
+            className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50 transition-colors whitespace-nowrap"
+          >
+            {savingStoryDm ? "Saving..." : "Save"}
+          </button>
         </div>
       </div>
 

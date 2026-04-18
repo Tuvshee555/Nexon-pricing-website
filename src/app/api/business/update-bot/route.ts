@@ -9,12 +9,14 @@ export async function POST(request: Request) {
 
   const userId = session.user.id;
   const body = await request.json();
-  const { botPrompt, botName, welcomeMessage, botTone, aiCommentsEnabled } = body as {
+  const { botPrompt, botName, welcomeMessage, botTone, aiCommentsEnabled, ai_agent_mode, story_reply_auto_dm } = body as {
     botPrompt?: string;
     botName?: string;
     welcomeMessage?: string;
     botTone?: string;
     aiCommentsEnabled?: boolean;
+    ai_agent_mode?: boolean;
+    story_reply_auto_dm?: string;
   };
 
   const validTones = ["friendly", "formal", "professional", "casual"];
@@ -27,6 +29,16 @@ export async function POST(request: Request) {
   if (!business) return NextResponse.json({ error: "Business not found" }, { status: 404 });
 
   const newStep = Math.max((business.onboarding_step as number) || 0, 4);
+
+  // Handle partial updates (only ai_agent_mode or story_reply_auto_dm)
+  if (ai_agent_mode !== undefined) {
+    await sql`UPDATE businesses SET ai_agent_mode = ${ai_agent_mode} WHERE id = ${business.id as string}`;
+    return NextResponse.json({ success: true });
+  }
+  if (story_reply_auto_dm !== undefined) {
+    await sql`UPDATE businesses SET story_reply_auto_dm = ${story_reply_auto_dm || null} WHERE id = ${business.id as string}`;
+    return NextResponse.json({ success: true });
+  }
 
   await sql`
     UPDATE businesses

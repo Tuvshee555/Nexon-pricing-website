@@ -1,12 +1,20 @@
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!;
-const CHAT_ID = process.env.TELEGRAM_CHAT_ID!;
+function getBotToken(): string {
+  const val = process.env.TELEGRAM_BOT_TOKEN;
+  if (!val) throw new Error("Missing env var: TELEGRAM_BOT_TOKEN");
+  return val;
+}
+function getChatId(): string {
+  const val = process.env.TELEGRAM_CHAT_ID;
+  if (!val) throw new Error("Missing env var: TELEGRAM_CHAT_ID");
+  return val;
+}
 
 export async function sendTelegramMessage(text: string): Promise<void> {
   try {
-    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+    await fetch(`https://api.telegram.org/bot${getBotToken()}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: CHAT_ID, text, parse_mode: "HTML" }),
+      body: JSON.stringify({ chat_id: getChatId(), text, parse_mode: "HTML" }),
     });
   } catch (err) {
     console.error("Telegram notification failed:", err);
@@ -82,7 +90,7 @@ export async function notifySubscriptionDeducted(
 
 export async function notifyOwner(chatId: string, text: string): Promise<void> {
   try {
-    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+    await fetch(`https://api.telegram.org/bot${getBotToken()}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML" }),

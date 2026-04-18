@@ -13,10 +13,14 @@ import {
   sendTypingIndicator,
   upsertConversationThreadMessages,
 } from "@/lib/meta";
-// OPENAI_API_KEY still used for main AI reply below
+import { fireWebhooks } from "@/lib/webhooks";
+function requireEnv(name: string): string {
+  const val = process.env[name];
+  if (!val) throw new Error(`Missing env var: ${name}`);
+  return val;
+}
 
-const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN!;
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY!;
+const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN ?? "";
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -183,10 +187,10 @@ export async function POST(request: Request) {
         if (!businessId) continue;
 
         const [businesses, plans, threads, keywordTriggers] = await Promise.all([
-          sql`SELECT bot_prompt, status, knowledge_json, billing_active FROM businesses WHERE id = ${businessId} LIMIT 1`,
+          sql`SELECT bot_prompt, status, knowledge_json, billing_active, ai_agent_mode, story_reply_auto_dm FROM businesses WHERE id = ${businessId} LIMIT 1`,
           sql`SELECT plan_type FROM plans WHERE business_id = ${businessId} LIMIT 1`,
           sql`
-            SELECT messages FROM conversation_threads
+            SELECT messages, paused_until FROM conversation_threads
             WHERE business_id = ${businessId} AND platform = ${platform} AND sender_id = ${senderId}
             LIMIT 1
           `,
@@ -201,10 +205,32 @@ export async function POST(request: Request) {
         const plan = plans[0] ?? null;
         if (!business || business.status !== "active" || !business.billing_active || plan?.plan_type !== "monthly") continue;
 
+        // Pause check — bot is paused for this contact
+        const pausedUntil = threads[0]?.paused_until as string | null;
+        if (pausedUntil && new Date(pausedUntil) > new Date()) continue;
+
+        // Fire new_contact event on first message
+        const history = Array.isArray(threads[0]?.messages) ? threads[0].messages as Array<{ role: string; content: string }> : [];
+        if (history.length === 0) {
+          await fireWebhooks(businessId, "new_contact", { senderId, platform });
+        }
+
+        // Story reply detection — if event has reply_to.story, use story_reply_auto_dm
+        const isStoryReply = Boolean((event.message as Record<string, unknown> | undefined)?.reply_to && ((event.message as Record<string, unknown>).reply_to as Record<string, unknown>)?.story);
+        if (isStoryReply && business.story_reply_auto_dm && pageAccessToken) {
+          const storyDm = business.story_reply_auto_dm as string;
+          await sendTypingIndicator({ recipientId: senderId, pageAccessToken });
+          await sendMetaMessage({ recipientId: senderId, text: storyDm, pageAccessToken });
+          await upsertConversationThreadMessages({ businessId, platform, senderId, messages: [{ role: "user", content: messageText }, { role: "assistant", content: storyDm }] });
+          await logMessageDelivery({ businessId, platform });
+          continue;
+        }
+
+        const aiAgentMode = Boolean(business.ai_agent_mode);
         const triggers = keywordTriggers as KeywordTrigger[];
 
-        // Keyword match — if no match, falls through to AI reply
-        const matchedTrigger = matchKeyword(messageText, triggers);
+        // Keyword match — skipped in AI Agent mode
+        const matchedTrigger = aiAgentMode ? null : matchKeyword(messageText, triggers);
 
         if (matchedTrigger) {
           // Send typing indicator first
@@ -286,7 +312,7 @@ export async function POST(request: Request) {
 
         const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
-          headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+          headers: { Authorization: `Bearer ${requireEnv("OPENAI_API_KEY")}`, "Content-Type": "application/json" },
           body: JSON.stringify({ model: OPENAI_MODEL, messages: openaiMessages, max_tokens: 500 }),
         });
         if (!openaiRes.ok) {
@@ -332,6 +358,11 @@ export async function POST(request: Request) {
           } catch (err) {
             console.error("[webhook] AI send failed:", err);
           }
+        }
+
+        await fireWebhooks(businessId, "message_received", { senderId, platform, text: messageText });
+        if (needsHuman) {
+          await fireWebhooks(businessId, "conversation_escalated", { senderId, platform });
         }
       }
 
@@ -428,7 +459,7 @@ export async function POST(request: Request) {
 
         const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
-          headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+          headers: { Authorization: `Bearer ${requireEnv("OPENAI_API_KEY")}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             model: OPENAI_MODEL,
             messages: [

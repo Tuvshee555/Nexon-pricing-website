@@ -25,9 +25,22 @@ export async function POST(request: Request) {
 
   const userId = session.user.id;
   const body = await request.json();
-  const { message, platform } = body;
+  const { message, platform, scheduledAt } = body as { message: string; platform: string; scheduledAt?: string };
 
   if (!message) return NextResponse.json({ error: "message required" }, { status: 400 });
+
+  // Scheduled broadcast — just store it, cron will send it
+  if (scheduledAt) {
+    const userId = session.user.id;
+    const businesses2 = await sql`SELECT id FROM businesses WHERE user_id = ${userId} LIMIT 1`;
+    if (!businesses2[0]) return NextResponse.json({ error: "No business" }, { status: 404 });
+    const broadcastRows2 = await sql`
+      INSERT INTO broadcasts (business_id, message, platform, status, scheduled_at)
+      VALUES (${businesses2[0].id as string}, ${message}, ${platform || "all"}, 'scheduled', ${scheduledAt})
+      RETURNING id
+    `;
+    return NextResponse.json({ success: true, scheduled: true, broadcastId: broadcastRows2[0].id });
+  }
 
   const businesses = await sql`
     SELECT b.id, pa.page_access_token, pa.platform as pa_platform
